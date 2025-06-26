@@ -1,0 +1,355 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  analyst
+  partner
+}
+
+enum UserStatus {
+  active
+  suspended
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  apiKeyHash   String?   @map("api_key_hash")
+  role         UserRole  @default(analyst)
+  status       UserStatus @default(active)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  auditLogs    AuditLog[]
+  apiKeys      ApiKey[]
+  performedActions CaseAction[] @relation("UserPerformedActions")
+  webhooks     Webhook[]
+  assignedCases     Case[]        @relation("UserAssignedCases")
+  uploadedEvidence  Evidence[]    @relation("UserUploadedEvidence")
+  transactionTraces TransactionTrace[]
+
+  @@map("users")
+}
+
+model AuditLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String?   @map("user_id") @db.Uuid
+  apiKeyId        String?   @map("api_key_id") @db.Uuid
+  actionType      String    @map("action_type")
+  endpoint        String
+  httpMethod      String    @map("http_method")
+  requestPayload  Json?     @map("request_payload") // JSONB in PostgreSQL
+  responseStatus  Int       @map("response_status")
+  ipAddress       String    @map("ip_address")
+  userAgent       String?   @map("user_agent")
+  duration        Int?      // Request duration in milliseconds
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  apiKey ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@map("audit_log")
+  @@index([userId])
+  @@index([actionType])
+  @@index([createdAt])
+}
+
+model ApiKey {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    // Friendly name for the API key
+  keyHash     String    @unique @map("key_hash") // Hashed version of the key
+  userId      String    @map("user_id") @db.Uuid
+  permissions Json      // JSONB array of allowed permissions
+  lastUsed    DateTime? @map("last_used")
+  expiresAt   DateTime? @map("expires_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+
+  @@map("api_keys")
+  @@index([userId])
+  @@index([keyHash])
+}
+
+enum SanctionsSource {
+  OFAC
+  UN
+  EU
+  FIU_IND
+  INTERNAL
+}
+
+enum EntityType {
+  INDIVIDUAL
+  ENTITY
+  VESSEL
+  AIRCRAFT
+  WALLET
+  EXCHANGE
+  MIXER
+  DARKNET
+}
+
+model SanctionsWatchlist {
+  id            String          @id @default(uuid()) @db.Uuid
+  source        SanctionsSource
+  entityName    String          @map("entity_name")
+  entityType    EntityType      @map("entity_type")
+  walletAddress String?         @map("wallet_address")
+  chain         String?
+  country       String?
+  description   String?
+  riskLevel     String?         @map("risk_level") // HIGH, MEDIUM, LOW
+  metadata      Json?           // Additional data from source
+  isActive      Boolean         @default(true) @map("is_active")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  @@map("sanctions_watchlist")
+  @@unique([source, entityName, walletAddress])
+  @@index([walletAddress])
+  @@index([source])
+  @@index([entityType])
+  @@index([chain])
+  @@index([updatedAt])
+}
+
+enum TraceStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model TransactionTrace {
+  id            String      @id @default(uuid()) @db.Uuid
+  traceId       String      @unique @map("trace_id")
+  walletAddress String      @map("wallet_address")
+  chain         String
+  depth         Int
+  hopsJson      Json        @map("hops_json") // Complete trace data
+  riskLevel     Float       @map("risk_level") // 0.0 to 1.0
+  riskFlags     Json        @map("risk_flags") // Array of detected risks
+  status        TraceStatus @default(PENDING)
+  startedAt     DateTime?   @map("started_at")
+  completedAt   DateTime?   @map("completed_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  requestedBy String? @map("requested_by") @db.Uuid
+  user        User?   @relation(fields: [requestedBy], references: [id], onDelete: SetNull)
+
+  @@map("transaction_traces")
+  @@index([walletAddress])
+  @@index([chain])
+  @@index([status])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model SyncJob {
+  id          String        @id @default(uuid()) @db.Uuid
+  source      String        // OFAC, UN, EU, etc.
+  status      SyncJobStatus @default(PENDING)
+  startedAt   DateTime?     @map("started_at")
+  completedAt DateTime?     @map("completed_at")
+  recordsProcessed Int?      @map("records_processed")
+  recordsAdded     Int?      @map("records_added")
+  recordsUpdated   Int?      @map("records_updated")
+  errorMessage     String?   @map("error_message")
+  metadata         Json?     // Source-specific sync data
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("sync_jobs")
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum CaseStatus {
+  New
+  Investigating
+  Filed
+  Closed
+}
+
+enum FileType {
+  KYC
+  ITR
+  Note
+  Screenshot
+}
+
+model Case {
+  id             String    @id @default(uuid()) @db.Uuid
+  wallet_address String  @map("wallet_address")
+  risk_score     Int       @map("risk_score")
+  status         CaseStatus @default(New)
+  assigned_to    String?   @map("assigned_to") @db.Uuid
+  created_at     DateTime  @default(now()) @map("created_at")
+  updated_at     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  assignedUser   User?     @relation("UserAssignedCases", fields: [assigned_to], references: [id])
+  evidence       Evidence[]
+  actions        CaseAction[]
+  leReports      LEReport[]
+  strReports     STRReport[]
+
+  @@map("cases")
+  @@index([wallet_address])
+  @@index([status])
+  @@index([assigned_to])
+}
+
+model Evidence {
+  id           String   @id @default(uuid()) @db.Uuid
+  case_id      String   @db.Uuid
+  case         Case     @relation(fields: [case_id], references: [id])
+  object_key   String   @map("object_key") // MinIO object key instead of file_path
+  file_name    String   @map("file_name") // Original file name
+  file_type    FileType
+  file_size    Int      @map("file_size") // File size in bytes
+  content_type String?  @map("content_type") // MIME type
+  uploaded_by  String   @db.Uuid // FK to User.id
+  uploaded_at  DateTime @default(now())
+  description  String?
+
+  uploader     User     @relation("UserUploadedEvidence", fields: [uploaded_by], references: [id])
+
+  @@map("evidence")
+  @@index([case_id])
+  @@index([file_type])
+  @@index([uploaded_at])
+}
+
+model CaseAction {
+  id           String   @id @default(uuid()) @db.Uuid
+  case_id      String   @db.Uuid
+  case         Case     @relation(fields: [case_id], references: [id])
+  action       String
+  performed_by String   @db.Uuid // FK to User.id
+  performed_at DateTime @default(now())
+  details      Json?
+
+  performer    User     @relation("UserPerformedActions", fields: [performed_by], references: [id])
+}
+
+model STRReport {
+  id         String   @id @default(uuid()) @db.Uuid
+  case_id    String   @db.Uuid
+  case       Case     @relation(fields: [case_id], references: [id])
+  pdf_path   String
+  pan          String?  @unique
+  aadhaar      String?  @unique
+  name         String?
+  dob          DateTime?
+  address      String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  walletLinks  WalletKYCLink[]
+}
+
+model WalletKYCLink {
+  id           String   @id @default(uuid()) @db.Uuid
+  wallet       String   // wallet address
+  kyc_id       String   @db.Uuid
+  kycIdentity  STRReport @relation(fields: [kyc_id], references: [id])
+  linked_by    String   // User.id
+  linked_at    DateTime @default(now())
+}
+
+model Webhook {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   // Friendly name for the webhook
+  url         String   // Webhook endpoint URL
+  secret      String   // Secret for signature verification
+  events      Json     // Array of events to listen for
+  isActive    Boolean  @default(true) @map("is_active")
+  userId      String   @map("user_id") @db.Uuid
+  lastTriggered DateTime? @map("last_triggered")
+  failureCount Int     @default(0) @map("failure_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@map("webhooks")
+  @@index([userId])
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id          String   @id @default(uuid()) @db.Uuid
+  webhookId   String   @map("webhook_id") @db.Uuid
+  eventType   String   @map("event_type")
+  payload     Json     // Event payload
+  responseStatus Int?  @map("response_status")
+  responseBody String? @map("response_body")
+  duration    Int?     // Request duration in milliseconds
+  success     Boolean  @default(false)
+  errorMessage String? @map("error_message")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+  @@index([webhookId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([success])
+}
+
+model LEReport {
+  id          String   @id @default(uuid()) @db.Uuid
+  caseId      String   @map("case_id") @db.Uuid
+  reportType  String   @map("report_type") // FULL, SUMMARY, EVIDENCE_CHAIN, REGULATORY
+  pdfPath     String   @map("pdf_path")
+  reportData  Json     @map("report_data")
+  status      String   @default("GENERATED") // GENERATED, SENT, ARCHIVED
+  generatedAt DateTime @default(now()) @map("generated_at")
+  sentAt      DateTime? @map("sent_at")
+  sentTo      String?  @map("sent_to")
+  notes       String?
+
+  // Relations
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@map("le_reports")
+  @@index([caseId])
+  @@index([reportType])
+  @@index([status])
+  @@index([generatedAt])
+}
