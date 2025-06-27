@@ -367,6 +367,10 @@ export default function Settings() {
                     <Input
                       id="bitcoin-node"
                       placeholder="https://bitcoin-node.example.com"
+                      value={formData.bitcoinNode}
+                      onChange={(e) =>
+                        handleInputChange("bitcoinNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
