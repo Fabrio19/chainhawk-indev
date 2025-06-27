@@ -378,6 +378,10 @@ export default function Settings() {
                     <Input
                       id="polygon-node"
                       placeholder="https://polygon-rpc.com"
+                      value={formData.polygonNode}
+                      onChange={(e) =>
+                        handleInputChange("polygonNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
