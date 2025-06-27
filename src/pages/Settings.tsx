@@ -441,6 +441,10 @@ export default function Settings() {
                         id="ctr-threshold"
                         placeholder="1000000"
                         type="number"
+                        value={formData.ctrThreshold}
+                        onChange={(e) =>
+                          handleInputChange("ctrThreshold", e.target.value)
+                        }
                       />
                     </div>
                   </div>
