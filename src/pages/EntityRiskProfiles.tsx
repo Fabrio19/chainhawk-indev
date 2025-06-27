@@ -853,7 +853,13 @@ export default function EntityRiskProfiles() {
                         </div>
 
                         <div className="pt-4 border-t">
-                          <Button className="w-full">
+                          <Button
+                            className="w-full"
+                            onClick={() =>
+                              handleScheduleReview(selectedProfile.entityId)
+                            }
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
                             Schedule Compliance Review
                           </Button>
                         </div>
