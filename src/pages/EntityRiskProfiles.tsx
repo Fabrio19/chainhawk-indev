@@ -19,6 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
 import {
   getEntityRiskProfiles,
   getCounterpartyExposure,
@@ -36,6 +39,12 @@ import {
   BarChart3,
   PieChart,
   ExternalLink,
+  Search,
+  RefreshCw,
+  Download,
+  Plus,
+  Calendar,
+  Loader2,
 } from "lucide-react";
 
 export default function EntityRiskProfiles() {
