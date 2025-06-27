@@ -272,14 +272,43 @@ export default function EntityRiskProfiles() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Entity Risk Profiles
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Aggregate risk scoring for entities with multiple wallets and
-            comprehensive counterparty exposure analysis
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Entity Risk Profiles
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Aggregate risk scoring for entities with multiple wallets and
+              comprehensive counterparty exposure analysis
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search entities..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Entity
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
