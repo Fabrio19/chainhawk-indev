@@ -422,7 +422,7 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                <Button>
+                <Button onClick={() => handleSave("blockchain")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Configuration
                 </Button>
