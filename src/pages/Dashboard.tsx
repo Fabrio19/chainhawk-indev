@@ -372,6 +372,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <Toaster />
     </DashboardLayout>
   );
 }
