@@ -429,6 +429,10 @@ export default function Settings() {
                         id="str-threshold"
                         placeholder="1000000"
                         type="number"
+                        value={formData.strThreshold}
+                        onChange={(e) =>
+                          handleInputChange("strThreshold", e.target.value)
+                        }
                       />
                     </div>
                     <div>
