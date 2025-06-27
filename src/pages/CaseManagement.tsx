@@ -61,24 +61,31 @@ export default function CaseManagement() {
   const [selectedCase, setSelectedCase] = useState<ComplianceCase | null>(null);
   const [showCaseDetail, setShowCaseDetail] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  
+
   // New case form state
   const [newCase, setNewCase] = useState({
     wallet_address: "",
     related_tx_hash: "",
     risk_score: 50,
-    assigned_to: ""
+    assigned_to: "",
   });
 
   useEffect(() => {
     const loadCases = async () => {
       try {
+        setLoading(true);
         const casesData = await getCases();
         // Ensure casesData is always an array
-        setCases(Array.isArray(casesData) ? casesData : []);
+        const safeCasesData = Array.isArray(casesData) ? casesData : [];
+        setCases(safeCasesData);
+
+        if (safeCasesData.length === 0) {
+          console.warn("No cases data received, check backend connection");
+        }
       } catch (error) {
         console.error("Error loading cases:", error);
         setCases([]); // Set empty array on error
+        // You could add a toast notification here
       } finally {
         setLoading(false);
       }
@@ -96,7 +103,7 @@ export default function CaseManagement() {
         wallet_address: "",
         related_tx_hash: "",
         risk_score: 50,
-        assigned_to: ""
+        assigned_to: "",
       });
     } catch (error) {
       console.error("Error creating case:", error);
@@ -118,16 +125,23 @@ export default function CaseManagement() {
     }
   };
 
-  const filteredCases = Array.isArray(cases) ? cases.filter((case_) => {
-    const matchesSearch =
-      case_.wallet_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (case_.related_tx_hash && case_.related_tx_hash.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredCases = Array.isArray(cases)
+    ? cases.filter((case_) => {
+        const matchesSearch =
+          case_.wallet_address
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (case_.related_tx_hash &&
+            case_.related_tx_hash
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()));
 
-    const matchesStatus =
-      filterStatus === "all" || case_.status === filterStatus;
+        const matchesStatus =
+          filterStatus === "all" || case_.status === filterStatus;
 
-    return matchesSearch && matchesStatus;
-  }) : [];
+        return matchesSearch && matchesStatus;
+      })
+    : [];
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -225,7 +239,9 @@ export default function CaseManagement() {
                 <AlertTriangle className="h-8 w-8 text-red-500 mr-3" />
                 <div>
                   <div className="text-2xl font-bold">
-                    {Array.isArray(cases) ? cases.filter((c) => c.status === "New").length : 0}
+                    {Array.isArray(cases)
+                      ? cases.filter((c) => c.status === "New").length
+                      : 0}
                   </div>
                   <div className="text-sm text-gray-600">New Cases</div>
                 </div>
@@ -239,7 +255,9 @@ export default function CaseManagement() {
                 <Clock className="h-8 w-8 text-blue-500 mr-3" />
                 <div>
                   <div className="text-2xl font-bold">
-                    {Array.isArray(cases) ? cases.filter((c) => c.status === "Investigating").length : 0}
+                    {Array.isArray(cases)
+                      ? cases.filter((c) => c.status === "Investigating").length
+                      : 0}
                   </div>
                   <div className="text-sm text-gray-600">Investigating</div>
                 </div>
@@ -253,7 +271,9 @@ export default function CaseManagement() {
                 <CheckCircle className="h-8 w-8 text-green-500 mr-3" />
                 <div>
                   <div className="text-2xl font-bold">
-                    {Array.isArray(cases) ? cases.filter((c) => c.status === "Filed").length : 0}
+                    {Array.isArray(cases)
+                      ? cases.filter((c) => c.status === "Filed").length
+                      : 0}
                   </div>
                   <div className="text-sm text-gray-600">Filed</div>
                 </div>
@@ -267,7 +287,9 @@ export default function CaseManagement() {
                 <CheckCircle className="h-8 w-8 text-gray-500 mr-3" />
                 <div>
                   <div className="text-2xl font-bold">
-                    {Array.isArray(cases) ? cases.filter((c) => c.status === "Closed").length : 0}
+                    {Array.isArray(cases)
+                      ? cases.filter((c) => c.status === "Closed").length
+                      : 0}
                   </div>
                   <div className="text-sm text-gray-600">Closed</div>
                 </div>
@@ -331,10 +353,19 @@ export default function CaseManagement() {
                       {case_.id}
                     </TableCell>
                     <TableCell className="font-mono text-sm">
-                      {case_.wallet_address.slice(0, 8)}...{case_.wallet_address.slice(-6)}
+                      {case_.wallet_address.slice(0, 8)}...
+                      {case_.wallet_address.slice(-6)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={case_.risk_score > 70 ? "destructive" : case_.risk_score > 40 ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          case_.risk_score > 70
+                            ? "destructive"
+                            : case_.risk_score > 40
+                              ? "default"
+                              : "secondary"
+                        }
+                      >
                         {case_.risk_score}
                       </Badge>
                     </TableCell>
