@@ -11,12 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Toaster } from "@/components/ui/toaster";
 import {
   getDashboardStats,
   getActiveAlerts,
   type DashboardStats,
   type Alert as AlertType,
 } from "@/lib/api";
+import { useDashboardOperations } from "@/hooks/useDashboardOperations";
 import {
   TrendingUp,
   TrendingDown,
@@ -26,6 +28,7 @@ import {
   Users,
   Activity,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 
 export default function Dashboard() {
