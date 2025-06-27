@@ -635,7 +635,13 @@ export default function Settings() {
                     </div>
                     <div>
                       <Label>API Rate Limiting</Label>
-                      <Input placeholder="1000 requests/hour" />
+                      <Input
+                        placeholder="1000 requests/hour"
+                        value={formData.apiRateLimit}
+                        onChange={(e) =>
+                          handleInputChange("apiRateLimit", e.target.value)
+                        }
+                      />
                     </div>
                   </div>
                 </div>
