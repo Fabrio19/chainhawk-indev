@@ -367,7 +367,6 @@ class MockApiService {
       },
     };
   }
-}
 
   async changePassword(): Promise<ApiResponse<any>> {
     await simulateDelay();
