@@ -243,20 +243,55 @@ export default function Dashboard() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
+                <Button
+                  className="w-full justify-start"
+                  onClick={() => screenNewWallet()}
+                  disabled={operationLoading.screenWallet}
+                >
+                  {operationLoading.screenWallet ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Users className="h-4 w-4 mr-2" />
+                  )}
                   Screen New Wallet
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <FileText className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => generateSTRReport()}
+                  disabled={operationLoading.generateSTR}
+                >
+                  {operationLoading.generateSTR ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
                   Generate STR Report
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Shield className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => runSanctionCheck()}
+                  disabled={operationLoading.sanctionCheck}
+                >
+                  {operationLoading.sanctionCheck ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Shield className="h-4 w-4 mr-2" />
+                  )}
                   Run Sanction Check
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Activity className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => traceTransaction()}
+                  disabled={operationLoading.traceTransaction}
+                >
+                  {operationLoading.traceTransaction ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Activity className="h-4 w-4 mr-2" />
+                  )}
                   Trace Transaction
                 </Button>
               </CardContent>
