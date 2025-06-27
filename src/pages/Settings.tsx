@@ -543,7 +543,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button>
+                <Button onClick={() => handleSave("compliance")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Compliance Settings
                 </Button>
