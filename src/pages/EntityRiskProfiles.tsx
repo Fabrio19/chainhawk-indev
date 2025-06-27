@@ -317,8 +317,12 @@ export default function EntityRiskProfiles() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold">{profiles.length}</div>
-                  <div className="text-sm text-gray-600">Total Entities</div>
+                  <div className="text-2xl font-bold">
+                    {filteredProfiles.length}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {searchTerm ? "Filtered" : "Total"} Entities
+                  </div>
                 </div>
                 <User className="h-8 w-8 text-blue-500" />
               </div>
@@ -329,7 +333,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-red-600">
-                    {profiles.filter((p) => p.aggregateRiskScore >= 70).length}
+                    {
+                      filteredProfiles.filter((p) => p.aggregateRiskScore >= 70)
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">High Risk</div>
                 </div>
@@ -342,7 +349,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold">
-                    {profiles.filter((p) => p.kycLevel === "enhanced").length}
+                    {
+                      filteredProfiles.filter((p) => p.kycLevel === "enhanced")
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">Enhanced KYC</div>
                 </div>
@@ -356,8 +366,9 @@ export default function EntityRiskProfiles() {
                 <div>
                   <div className="text-2xl font-bold">
                     {
-                      profiles.filter((p) => p.complianceStatus === "compliant")
-                        .length
+                      filteredProfiles.filter(
+                        (p) => p.complianceStatus === "compliant",
+                      ).length
                     }
                   </div>
                   <div className="text-sm text-gray-600">Compliant</div>
