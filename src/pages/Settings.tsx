@@ -625,7 +625,13 @@ export default function Settings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>IP Whitelist</Label>
-                      <Input placeholder="192.168.1.0/24, 10.0.0.0/8" />
+                      <Input
+                        placeholder="192.168.1.0/24, 10.0.0.0/8"
+                        value={formData.ipWhitelist}
+                        onChange={(e) =>
+                          handleInputChange("ipWhitelist", e.target.value)
+                        }
+                      />
                     </div>
                     <div>
                       <Label>API Rate Limiting</Label>
