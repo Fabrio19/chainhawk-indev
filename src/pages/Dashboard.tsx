@@ -36,6 +36,16 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Dashboard operations hook
+  const {
+    screenNewWallet,
+    generateSTRReport,
+    runSanctionCheck,
+    traceTransaction,
+    investigateAlert,
+    isLoading: operationLoading,
+  } = useDashboardOperations();
+
   useEffect(() => {
     const loadData = async () => {
       try {
