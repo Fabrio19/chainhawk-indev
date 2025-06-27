@@ -84,6 +84,12 @@ export default function Settings() {
     setApiKeys((prev) => ({ ...prev, [integrationId]: value }));
   };
 
+  const handleSave = (section: string) => {
+    console.log(`Saving ${section} settings:`, formData);
+    // Here you would typically send the data to your backend
+    // For now, we'll just log it
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
