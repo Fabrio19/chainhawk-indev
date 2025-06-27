@@ -200,10 +200,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="flex h-[calc(100vh-80px)]">
         {/* Sidebar */}
-        <nav className="w-64 bg-white shadow-sm h-[calc(100vh-80px)] overflow-y-auto">
-          <div className="p-4">
+        <nav className="w-64 bg-white shadow-sm flex flex-col relative">
+          <div className="flex-1 overflow-y-auto p-4">
             <div className="space-y-1">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -232,14 +232,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* System Status */}
-          <div className="absolute bottom-4 left-4 right-4">
+          <div className="p-4 border-t border-gray-100">
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                 <span>Compliance Score</span>
                 <span className="font-semibold text-green-600">94%</span>
               </div>
               <div className="bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full w-[94%]"></div>
+                <div className="bg-blue-500 h-2 rounded-full w-[94%]"></div>
               </div>
               <div className="mt-2 text-xs text-gray-500">
                 <div className="flex justify-between">
@@ -252,7 +252,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </nav>
 
         {/* Main content */}
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );
