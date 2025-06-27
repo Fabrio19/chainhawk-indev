@@ -80,6 +80,10 @@ export default function Settings() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleApiKeyChange = (integrationId: string, value: string) => {
+    setApiKeys((prev) => ({ ...prev, [integrationId]: value }));
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
