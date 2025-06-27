@@ -95,6 +95,13 @@ export default function Settings() {
         setIntegrations(integrationsData);
         setNetworks(networksData);
         setAuditLogs(auditData);
+
+        // Initialize API keys from integration data
+        const initialApiKeys: Record<string, string> = {};
+        integrationsData.forEach((integration) => {
+          initialApiKeys[integration.id] = integration.apiKey;
+        });
+        setApiKeys(initialApiKeys);
       } catch (error) {
         console.error("Error loading settings data:", error);
       } finally {
