@@ -897,6 +897,7 @@ export default function EntityRiskProfiles() {
           </div>
         </div>
       </div>
+      <Toaster />
     </DashboardLayout>
   );
 }
