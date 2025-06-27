@@ -748,11 +748,24 @@ export default function EntityRiskProfiles() {
                                   </div>
                                 </div>
                                 <div className="flex space-x-2">
-                                  <Button variant="outline" size="sm">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAnalyzeWallet(wallet)}
+                                  >
                                     <Eye className="h-3 w-3 mr-1" />
                                     Analyze
                                   </Button>
-                                  <Button variant="outline" size="sm">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      window.open(
+                                        `https://etherscan.io/address/${wallet}`,
+                                        "_blank",
+                                      )
+                                    }
+                                  >
                                     <ExternalLink className="h-3 w-3" />
                                   </Button>
                                 </div>
