@@ -388,7 +388,15 @@ export default function Settings() {
                     <Label htmlFor="sync-interval">
                       Sync Interval (seconds)
                     </Label>
-                    <Input id="sync-interval" placeholder="30" type="number" />
+                    <Input
+                      id="sync-interval"
+                      placeholder="30"
+                      type="number"
+                      value={formData.syncInterval}
+                      onChange={(e) =>
+                        handleInputChange("syncInterval", e.target.value)
+                      }
+                    />
                   </div>
                 </div>
                 <Button>
