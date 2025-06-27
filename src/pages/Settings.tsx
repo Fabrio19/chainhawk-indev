@@ -669,7 +669,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button>
+                <Button onClick={() => handleSave("security")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Security Settings
                 </Button>
