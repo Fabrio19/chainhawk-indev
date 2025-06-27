@@ -59,6 +59,24 @@ export default function Settings() {
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Form state management
+  const [formData, setFormData] = useState({
+    serviceName: "",
+    ethereumNode: "",
+    bitcoinNode: "",
+    polygonNode: "",
+    syncInterval: "30",
+    strThreshold: "1000000",
+    ctrThreshold: "1000000",
+    fiuEndpoint: "https://fiuindia.gov.in/api",
+    ipWhitelist: "192.168.1.0/24, 10.0.0.0/8",
+    apiRateLimit: "1000 requests/hour",
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
   useEffect(() => {
     const loadData = async () => {
       try {
