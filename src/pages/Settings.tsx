@@ -233,7 +233,10 @@ export default function Settings() {
                       <div className="flex items-center space-x-2">
                         <Input
                           placeholder="API Key"
-                          value={integration.apiKey}
+                          value={apiKeys[integration.id] || ""}
+                          onChange={(e) =>
+                            handleApiKeyChange(integration.id, e.target.value)
+                          }
                           type="password"
                           className="flex-1"
                         />
