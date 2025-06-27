@@ -73,6 +73,9 @@ export default function Settings() {
     apiRateLimit: "1000 requests/hour",
   });
 
+  // API key state management
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
