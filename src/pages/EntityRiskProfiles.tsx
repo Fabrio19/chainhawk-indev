@@ -63,26 +63,53 @@ export default function EntityRiskProfiles() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const profilesData = await getEntityRiskProfiles();
-        setProfiles(profilesData);
-        if (profilesData.length > 0) {
-          setSelectedProfile(profilesData[0]);
-          const exposureData = await getCounterpartyExposure(
-            profilesData[0].entityId,
-          );
-          setCounterpartyExposure(exposureData);
-        }
-      } catch (error) {
-        console.error("Error loading entity data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    loadEntityData();
   }, []);
+
+  // Filter profiles based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredProfiles(profiles);
+    } else {
+      const filtered = profiles.filter(
+        (profile) =>
+          profile.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.entityId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.entityType.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+      setFilteredProfiles(filtered);
+    }
+  }, [profiles, searchTerm]);
+
+  const loadEntityData = async () => {
+    try {
+      setError(null);
+      const profilesData = await getEntityRiskProfiles();
+      setProfiles(profilesData);
+      setFilteredProfiles(profilesData);
+
+      if (profilesData.length > 0) {
+        setSelectedProfile(profilesData[0]);
+        await loadCounterpartyData(profilesData[0].entityId);
+      }
+
+      toast({
+        title: "Data Loaded",
+        description: `${profilesData.length} entity profiles loaded successfully`,
+      });
+    } catch (error) {
+      console.error("Error loading entity data:", error);
+      setError("Failed to load entity profiles. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to load entity profiles",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const loadCounterpartyData = async (entityId: string) => {
     try {
