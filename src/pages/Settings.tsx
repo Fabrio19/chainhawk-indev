@@ -356,6 +356,10 @@ export default function Settings() {
                     <Input
                       id="ethereum-node"
                       placeholder="https://mainnet.infura.io/v3/..."
+                      value={formData.ethereumNode}
+                      onChange={(e) =>
+                        handleInputChange("ethereumNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
