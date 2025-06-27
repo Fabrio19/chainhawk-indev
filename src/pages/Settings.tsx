@@ -255,7 +255,13 @@ export default function Settings() {
                         <SelectItem value="bank">Banking API</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input placeholder="Service Name" />
+                    <Input
+                      placeholder="Service Name"
+                      value={formData.serviceName}
+                      onChange={(e) =>
+                        handleInputChange("serviceName", e.target.value)
+                      }
+                    />
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Integration
