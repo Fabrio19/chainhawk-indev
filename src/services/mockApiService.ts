@@ -368,6 +368,38 @@ class MockApiService {
     };
   }
 
+  async getCases(): Promise<ApiResponse<any[]>> {
+    await simulateDelay(500);
+    const mockCases = Array.from({ length: 8 }, (_, i) => ({
+      id: `CASE-${String(i + 1).padStart(3, "0")}`,
+      title: `Investigation ${i + 1}: Suspicious Transaction Pattern`,
+      description:
+        "Multiple high-value transactions to known high-risk wallets detected",
+      priority: ["low", "medium", "high", "critical"][
+        Math.floor(Math.random() * 4)
+      ],
+      status: ["open", "investigating", "resolved", "closed"][
+        Math.floor(Math.random() * 4)
+      ],
+      assignedTo: `Analyst ${i + 1}`,
+      createdAt: new Date(
+        Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      updatedAt: new Date().toISOString(),
+      relatedWallets: [`0x${Math.random().toString(16).substr(2, 40)}`],
+      findings: ["High transaction frequency", "Connection to mixer services"],
+      actions: [],
+      wallet_address: `0x${Math.random().toString(16).substr(2, 40)}`,
+      related_tx_hash: `0x${Math.random().toString(16).substr(2, 64)}`,
+      risk_score: Math.floor(Math.random() * 100),
+    }));
+
+    return {
+      success: true,
+      data: mockCases,
+    };
+  }
+
   async changePassword(): Promise<ApiResponse<any>> {
     await simulateDelay();
     return { success: true, data: { message: "Password changed (demo)" } };
