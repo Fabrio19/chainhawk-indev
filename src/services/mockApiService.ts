@@ -367,15 +367,7 @@ class MockApiService {
       },
     };
   }
-    return {
-      success: true,
-      data: {
-        user: this.currentUser,
-        apiKeys: [],
-        recentActivity: [],
-      },
-    };
-  }
+}
 
   async changePassword(): Promise<ApiResponse<any>> {
     await simulateDelay();
