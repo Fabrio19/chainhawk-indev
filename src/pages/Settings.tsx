@@ -50,6 +50,7 @@ import {
   Clock,
   User,
   Save,
+  Plus,
 } from "lucide-react";
 
 export default function Settings() {
@@ -57,6 +58,37 @@ export default function Settings() {
   const [networks, setNetworks] = useState<BlockchainNetwork[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Form state management
+  const [formData, setFormData] = useState({
+    serviceName: "",
+    ethereumNode: "",
+    bitcoinNode: "",
+    polygonNode: "",
+    syncInterval: "30",
+    strThreshold: "1000000",
+    ctrThreshold: "1000000",
+    fiuEndpoint: "https://fiuindia.gov.in/api",
+    ipWhitelist: "192.168.1.0/24, 10.0.0.0/8",
+    apiRateLimit: "1000 requests/hour",
+  });
+
+  // API key state management
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleApiKeyChange = (integrationId: string, value: string) => {
+    setApiKeys((prev) => ({ ...prev, [integrationId]: value }));
+  };
+
+  const handleSave = (section: string) => {
+    console.log(`Saving ${section} settings:`, formData);
+    // Here you would typically send the data to your backend
+    // For now, we'll just log it
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,6 +101,13 @@ export default function Settings() {
         setIntegrations(integrationsData);
         setNetworks(networksData);
         setAuditLogs(auditData);
+
+        // Initialize API keys from integration data
+        const initialApiKeys: Record<string, string> = {};
+        integrationsData.forEach((integration) => {
+          initialApiKeys[integration.id] = integration.apiKey;
+        });
+        setApiKeys(initialApiKeys);
       } catch (error) {
         console.error("Error loading settings data:", error);
       } finally {
@@ -200,7 +239,10 @@ export default function Settings() {
                       <div className="flex items-center space-x-2">
                         <Input
                           placeholder="API Key"
-                          value={integration.apiKey}
+                          value={apiKeys[integration.id] || ""}
+                          onChange={(e) =>
+                            handleApiKeyChange(integration.id, e.target.value)
+                          }
                           type="password"
                           className="flex-1"
                         />
@@ -236,7 +278,13 @@ export default function Settings() {
                         <SelectItem value="bank">Banking API</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input placeholder="Service Name" />
+                    <Input
+                      placeholder="Service Name"
+                      value={formData.serviceName}
+                      onChange={(e) =>
+                        handleInputChange("serviceName", e.target.value)
+                      }
+                    />
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Integration
@@ -331,6 +379,10 @@ export default function Settings() {
                     <Input
                       id="ethereum-node"
                       placeholder="https://mainnet.infura.io/v3/..."
+                      value={formData.ethereumNode}
+                      onChange={(e) =>
+                        handleInputChange("ethereumNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
@@ -338,6 +390,10 @@ export default function Settings() {
                     <Input
                       id="bitcoin-node"
                       placeholder="https://bitcoin-node.example.com"
+                      value={formData.bitcoinNode}
+                      onChange={(e) =>
+                        handleInputChange("bitcoinNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
@@ -345,16 +401,28 @@ export default function Settings() {
                     <Input
                       id="polygon-node"
                       placeholder="https://polygon-rpc.com"
+                      value={formData.polygonNode}
+                      onChange={(e) =>
+                        handleInputChange("polygonNode", e.target.value)
+                      }
                     />
                   </div>
                   <div>
                     <Label htmlFor="sync-interval">
                       Sync Interval (seconds)
                     </Label>
-                    <Input id="sync-interval" placeholder="30" type="number" />
+                    <Input
+                      id="sync-interval"
+                      placeholder="30"
+                      type="number"
+                      value={formData.syncInterval}
+                      onChange={(e) =>
+                        handleInputChange("syncInterval", e.target.value)
+                      }
+                    />
                   </div>
                 </div>
-                <Button>
+                <Button onClick={() => handleSave("blockchain")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Configuration
                 </Button>
@@ -384,6 +452,10 @@ export default function Settings() {
                         id="str-threshold"
                         placeholder="1000000"
                         type="number"
+                        value={formData.strThreshold}
+                        onChange={(e) =>
+                          handleInputChange("strThreshold", e.target.value)
+                        }
                       />
                     </div>
                     <div>
@@ -392,6 +464,10 @@ export default function Settings() {
                         id="ctr-threshold"
                         placeholder="1000000"
                         type="number"
+                        value={formData.ctrThreshold}
+                        onChange={(e) =>
+                          handleInputChange("ctrThreshold", e.target.value)
+                        }
                       />
                     </div>
                   </div>
@@ -443,6 +519,10 @@ export default function Settings() {
                       <Input
                         id="fiu-endpoint"
                         placeholder="https://fiuindia.gov.in/api"
+                        value={formData.fiuEndpoint}
+                        onChange={(e) =>
+                          handleInputChange("fiuEndpoint", e.target.value)
+                        }
                       />
                     </div>
                     <div>
@@ -463,7 +543,7 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button>
+                <Button onClick={() => handleSave("compliance")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Compliance Settings
                 </Button>
@@ -568,16 +648,28 @@ export default function Settings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>IP Whitelist</Label>
-                      <Input placeholder="192.168.1.0/24, 10.0.0.0/8" />
+                      <Input
+                        placeholder="192.168.1.0/24, 10.0.0.0/8"
+                        value={formData.ipWhitelist}
+                        onChange={(e) =>
+                          handleInputChange("ipWhitelist", e.target.value)
+                        }
+                      />
                     </div>
                     <div>
                       <Label>API Rate Limiting</Label>
-                      <Input placeholder="1000 requests/hour" />
+                      <Input
+                        placeholder="1000 requests/hour"
+                        value={formData.apiRateLimit}
+                        onChange={(e) =>
+                          handleInputChange("apiRateLimit", e.target.value)
+                        }
+                      />
                     </div>
                   </div>
                 </div>
 
-                <Button>
+                <Button onClick={() => handleSave("security")}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Security Settings
                 </Button>

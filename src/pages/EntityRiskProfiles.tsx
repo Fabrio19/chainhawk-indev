@@ -19,6 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
 import {
   getEntityRiskProfiles,
   getCounterpartyExposure,
@@ -36,37 +39,77 @@ import {
   BarChart3,
   PieChart,
   ExternalLink,
+  Search,
+  RefreshCw,
+  Download,
+  Plus,
+  Calendar,
+  Loader2,
 } from "lucide-react";
 
 export default function EntityRiskProfiles() {
   const [profiles, setProfiles] = useState<EntityRiskProfile[]>([]);
+  const [filteredProfiles, setFilteredProfiles] = useState<EntityRiskProfile[]>(
+    [],
+  );
   const [selectedProfile, setSelectedProfile] =
     useState<EntityRiskProfile | null>(null);
   const [counterpartyExposure, setCounterpartyExposure] =
     useState<CounterpartyExposure | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const profilesData = await getEntityRiskProfiles();
-        setProfiles(profilesData);
-        if (profilesData.length > 0) {
-          setSelectedProfile(profilesData[0]);
-          const exposureData = await getCounterpartyExposure(
-            profilesData[0].entityId,
-          );
-          setCounterpartyExposure(exposureData);
-        }
-      } catch (error) {
-        console.error("Error loading entity data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    loadEntityData();
   }, []);
+
+  // Filter profiles based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredProfiles(profiles);
+    } else {
+      const filtered = profiles.filter(
+        (profile) =>
+          profile.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.entityId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.entityType.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+      setFilteredProfiles(filtered);
+    }
+  }, [profiles, searchTerm]);
+
+  const loadEntityData = async () => {
+    try {
+      setError(null);
+      const profilesData = await getEntityRiskProfiles();
+      setProfiles(profilesData);
+      setFilteredProfiles(profilesData);
+
+      if (profilesData.length > 0) {
+        setSelectedProfile(profilesData[0]);
+        await loadCounterpartyData(profilesData[0].entityId);
+      }
+
+      toast({
+        title: "Data Loaded",
+        description: `${profilesData.length} entity profiles loaded successfully`,
+      });
+    } catch (error) {
+      console.error("Error loading entity data:", error);
+      setError("Failed to load entity profiles. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to load entity profiles",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const loadCounterpartyData = async (entityId: string) => {
     try {
@@ -74,7 +117,43 @@ export default function EntityRiskProfiles() {
       setCounterpartyExposure(exposureData);
     } catch (error) {
       console.error("Error loading counterparty data:", error);
+      toast({
+        title: "Warning",
+        description: "Failed to load counterparty exposure data",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadEntityData();
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleAnalyzeWallet = (walletAddress: string) => {
+    toast({
+      title: "Analysis Started",
+      description: `Analyzing wallet ${walletAddress.slice(0, 10)}...`,
+    });
+    // In a real app, this would navigate to wallet analysis page
+  };
+
+  const handleScheduleReview = (entityId: string) => {
+    toast({
+      title: "Review Scheduled",
+      description: `Compliance review scheduled for entity ${entityId}`,
+    });
+  };
+
+  const handleExportProfile = (profile: EntityRiskProfile) => {
+    toast({
+      title: "Export Started",
+      description: `Exporting profile for ${profile.entityName}`,
+    });
   };
 
   const handleProfileSelect = (profile: EntityRiskProfile) => {
@@ -159,8 +238,31 @@ export default function EntityRiskProfiles() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="flex flex-col items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="mt-4 text-gray-600">Loading entity profiles...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64">
+          <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Error Loading Data
+          </h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Try Again
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -170,14 +272,43 @@ export default function EntityRiskProfiles() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Entity Risk Profiles
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Aggregate risk scoring for entities with multiple wallets and
-            comprehensive counterparty exposure analysis
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Entity Risk Profiles
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Aggregate risk scoring for entities with multiple wallets and
+              comprehensive counterparty exposure analysis
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search entities..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Entity
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -186,8 +317,12 @@ export default function EntityRiskProfiles() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold">{profiles.length}</div>
-                  <div className="text-sm text-gray-600">Total Entities</div>
+                  <div className="text-2xl font-bold">
+                    {filteredProfiles.length}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {searchTerm ? "Filtered" : "Total"} Entities
+                  </div>
                 </div>
                 <User className="h-8 w-8 text-blue-500" />
               </div>
@@ -198,7 +333,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-red-600">
-                    {profiles.filter((p) => p.aggregateRiskScore >= 70).length}
+                    {
+                      filteredProfiles.filter((p) => p.aggregateRiskScore >= 70)
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">High Risk</div>
                 </div>
@@ -211,7 +349,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold">
-                    {profiles.filter((p) => p.kycLevel === "enhanced").length}
+                    {
+                      filteredProfiles.filter((p) => p.kycLevel === "enhanced")
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">Enhanced KYC</div>
                 </div>
@@ -225,8 +366,9 @@ export default function EntityRiskProfiles() {
                 <div>
                   <div className="text-2xl font-bold">
                     {
-                      profiles.filter((p) => p.complianceStatus === "compliant")
-                        .length
+                      filteredProfiles.filter(
+                        (p) => p.complianceStatus === "compliant",
+                      ).length
                     }
                   </div>
                   <div className="text-sm text-gray-600">Compliant</div>
@@ -249,39 +391,46 @@ export default function EntityRiskProfiles() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {profiles.map((profile) => (
-                    <div
-                      key={profile.entityId}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedProfile?.entityId === profile.entityId
-                          ? "bg-blue-50 border-blue-200"
-                          : "hover:bg-gray-50"
-                      }`}
-                      onClick={() => handleProfileSelect(profile)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          {getEntityTypeIcon(profile.entityType)}
-                          <span className="font-medium text-sm">
-                            {profile.entityName}
-                          </span>
-                        </div>
-                        <div
-                          className={`text-lg font-bold ${getRiskColor(profile.aggregateRiskScore)}`}
-                        >
-                          {profile.aggregateRiskScore}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        {getKycLevelBadge(profile.kycLevel)}
-                        {getComplianceStatusBadge(profile.complianceStatus)}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-2">
-                        {profile.linkedWallets.length} wallet(s) •{" "}
-                        {profile.entityType}
-                      </div>
+                  {filteredProfiles.length === 0 && searchTerm ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Search className="h-8 w-8 mx-auto mb-2" />
+                      <p>No entities found matching "{searchTerm}"</p>
                     </div>
-                  ))}
+                  ) : (
+                    filteredProfiles.map((profile) => (
+                      <div
+                        key={profile.entityId}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          selectedProfile?.entityId === profile.entityId
+                            ? "bg-blue-50 border-blue-200"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleProfileSelect(profile)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            {getEntityTypeIcon(profile.entityType)}
+                            <span className="font-medium text-sm">
+                              {profile.entityName}
+                            </span>
+                          </div>
+                          <div
+                            className={`text-lg font-bold ${getRiskColor(profile.aggregateRiskScore)}`}
+                          >
+                            {profile.aggregateRiskScore}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          {getKycLevelBadge(profile.kycLevel)}
+                          {getComplianceStatusBadge(profile.complianceStatus)}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-2">
+                          {profile.linkedWallets.length} wallet(s) •{" "}
+                          {profile.entityType}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -308,13 +457,25 @@ export default function EntityRiskProfiles() {
                           {selectedProfile.entityType}
                         </CardDescription>
                       </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-3xl font-bold ${getRiskColor(selectedProfile.aggregateRiskScore)}`}
+                      <div className="flex items-center space-x-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleExportProfile(selectedProfile)}
                         >
-                          {selectedProfile.aggregateRiskScore}
+                          <Download className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                        <div className="text-right">
+                          <div
+                            className={`text-3xl font-bold ${getRiskColor(selectedProfile.aggregateRiskScore)}`}
+                          >
+                            {selectedProfile.aggregateRiskScore}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Risk Score
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">Risk Score</div>
                       </div>
                     </div>
                   </CardHeader>
@@ -599,11 +760,24 @@ export default function EntityRiskProfiles() {
                                   </div>
                                 </div>
                                 <div className="flex space-x-2">
-                                  <Button variant="outline" size="sm">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleAnalyzeWallet(wallet)}
+                                  >
                                     <Eye className="h-3 w-3 mr-1" />
                                     Analyze
                                   </Button>
-                                  <Button variant="outline" size="sm">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      window.open(
+                                        `https://etherscan.io/address/${wallet}`,
+                                        "_blank",
+                                      )
+                                    }
+                                  >
                                     <ExternalLink className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -691,7 +865,13 @@ export default function EntityRiskProfiles() {
                         </div>
 
                         <div className="pt-4 border-t">
-                          <Button className="w-full">
+                          <Button
+                            className="w-full"
+                            onClick={() =>
+                              handleScheduleReview(selectedProfile.entityId)
+                            }
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
                             Schedule Compliance Review
                           </Button>
                         </div>
@@ -717,6 +897,7 @@ export default function EntityRiskProfiles() {
           </div>
         </div>
       </div>
+      <Toaster />
     </DashboardLayout>
   );
 }

@@ -11,12 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Toaster } from "@/components/ui/toaster";
 import {
   getDashboardStats,
   getActiveAlerts,
   type DashboardStats,
   type Alert as AlertType,
 } from "@/lib/api";
+import { useDashboardOperations } from "@/hooks/useDashboardOperations";
 import {
   TrendingUp,
   TrendingDown,
@@ -26,12 +28,23 @@ import {
   Users,
   Activity,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Dashboard operations hook
+  const {
+    screenNewWallet,
+    generateSTRReport,
+    runSanctionCheck,
+    traceTransaction,
+    investigateAlert,
+    isLoading: operationLoading,
+  } = useDashboardOperations();
 
   useEffect(() => {
     const loadData = async () => {
@@ -207,8 +220,17 @@ export default function Dashboard() {
                             {new Date(alert.timestamp).toLocaleString()}
                           </p>
                         </div>
-                        <Button variant="outline" size="sm">
-                          Investigate
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => investigateAlert(alert.id)}
+                          disabled={operationLoading[`investigate_${alert.id}`]}
+                        >
+                          {operationLoading[`investigate_${alert.id}`] ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            "Investigate"
+                          )}
                         </Button>
                       </div>
                     </Alert>
@@ -230,20 +252,55 @@ export default function Dashboard() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
+                <Button
+                  className="w-full justify-start"
+                  onClick={() => screenNewWallet()}
+                  disabled={operationLoading.screenWallet}
+                >
+                  {operationLoading.screenWallet ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Users className="h-4 w-4 mr-2" />
+                  )}
                   Screen New Wallet
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <FileText className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => generateSTRReport()}
+                  disabled={operationLoading.generateSTR}
+                >
+                  {operationLoading.generateSTR ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="h-4 w-4 mr-2" />
+                  )}
                   Generate STR Report
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Shield className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => runSanctionCheck()}
+                  disabled={operationLoading.sanctionCheck}
+                >
+                  {operationLoading.sanctionCheck ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Shield className="h-4 w-4 mr-2" />
+                  )}
                   Run Sanction Check
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Activity className="h-4 w-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => traceTransaction()}
+                  disabled={operationLoading.traceTransaction}
+                >
+                  {operationLoading.traceTransaction ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Activity className="h-4 w-4 mr-2" />
+                  )}
                   Trace Transaction
                 </Button>
               </CardContent>
@@ -315,6 +372,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      <Toaster />
     </DashboardLayout>
   );
 }

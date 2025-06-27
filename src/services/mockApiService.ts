@@ -96,6 +96,22 @@ class MockApiService {
   private currentUser: User | null = null;
   private currentToken: string | null = null;
 
+  // Generate mock data
+  private generateMockWallet() {
+    return {
+      address: `0x${Math.random().toString(16).substr(2, 40)}`,
+      chain: "ETH",
+      balance: Math.random() * 100000,
+      riskScore: Math.floor(Math.random() * 100),
+      lastActivity: new Date().toISOString(),
+      labels: ["Exchange", "DeFi"][Math.floor(Math.random() * 2)]
+        ? ["Exchange"]
+        : [],
+      isBlacklisted: Math.random() > 0.9,
+      entityType: "individual",
+    };
+  }
+
   // Initialize from localStorage
   constructor() {
     const token = localStorage.getItem("auth_token");
@@ -281,13 +297,106 @@ class MockApiService {
 
   async getUser(userId: string): Promise<ApiResponse<any>> {
     await simulateDelay();
+    return { success: true, data: { user: this.currentUser } };
+  }
+
+  // Dashboard operation methods
+  async screenWallet(address: string): Promise<ApiResponse<any>> {
+    await simulateDelay(800);
+    const walletData = {
+      ...this.generateMockWallet(),
+      address,
+    };
+    return { success: true, data: walletData };
+  }
+
+  async screenSanctions(address: string): Promise<ApiResponse<any>> {
+    await simulateDelay(1000);
+    // 10% chance of finding sanctions
+    if (Math.random() > 0.9) {
+      return {
+        success: true,
+        data: [
+          {
+            sanctionList: "OFAC",
+            entityName: "Suspicious Entity",
+            riskLevel: "HIGH",
+            description: "Listed for money laundering activities",
+          },
+        ],
+      };
+    }
+    return { success: true, data: [] };
+  }
+
+  async traceTransaction(hash: string): Promise<ApiResponse<any>> {
+    await simulateDelay(1200);
     return {
       success: true,
       data: {
-        user: this.currentUser,
-        apiKeys: [],
-        recentActivity: [],
+        traceId: `trace_${Math.random().toString(36).substr(2, 9)}`,
+        status: "started",
+        estimatedTime: "2-3 minutes",
       },
+    };
+  }
+
+  async generateReport(type: string): Promise<ApiResponse<any>> {
+    await simulateDelay(600);
+    return {
+      success: true,
+      data: {
+        id: `${type.toLowerCase()}_${Date.now()}`,
+        type,
+        status: "generated",
+        createdAt: new Date().toISOString(),
+        downloadUrl: `/reports/${type.toLowerCase()}_${Date.now()}.pdf`,
+      },
+    };
+  }
+
+  async investigateAlert(alertId: string): Promise<ApiResponse<any>> {
+    await simulateDelay(400);
+    return {
+      success: true,
+      data: {
+        alertId,
+        status: "investigating",
+        investigatedAt: new Date().toISOString(),
+        assignedTo: this.currentUser?.name || "Current User",
+      },
+    };
+  }
+
+  async getCases(): Promise<ApiResponse<any[]>> {
+    await simulateDelay(500);
+    const mockCases = Array.from({ length: 8 }, (_, i) => ({
+      id: `CASE-${String(i + 1).padStart(3, "0")}`,
+      title: `Investigation ${i + 1}: Suspicious Transaction Pattern`,
+      description:
+        "Multiple high-value transactions to known high-risk wallets detected",
+      priority: ["low", "medium", "high", "critical"][
+        Math.floor(Math.random() * 4)
+      ],
+      status: ["open", "investigating", "resolved", "closed"][
+        Math.floor(Math.random() * 4)
+      ],
+      assignedTo: `Analyst ${i + 1}`,
+      createdAt: new Date(
+        Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      updatedAt: new Date().toISOString(),
+      relatedWallets: [`0x${Math.random().toString(16).substr(2, 40)}`],
+      findings: ["High transaction frequency", "Connection to mixer services"],
+      actions: [],
+      wallet_address: `0x${Math.random().toString(16).substr(2, 40)}`,
+      related_tx_hash: `0x${Math.random().toString(16).substr(2, 64)}`,
+      risk_score: Math.floor(Math.random() * 100),
+    }));
+
+    return {
+      success: true,
+      data: mockCases,
     };
   }
 
