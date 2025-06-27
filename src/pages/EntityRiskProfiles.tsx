@@ -49,11 +49,18 @@ import {
 
 export default function EntityRiskProfiles() {
   const [profiles, setProfiles] = useState<EntityRiskProfile[]>([]);
+  const [filteredProfiles, setFilteredProfiles] = useState<EntityRiskProfile[]>(
+    [],
+  );
   const [selectedProfile, setSelectedProfile] =
     useState<EntityRiskProfile | null>(null);
   const [counterpartyExposure, setCounterpartyExposure] =
     useState<CounterpartyExposure | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadData = async () => {
