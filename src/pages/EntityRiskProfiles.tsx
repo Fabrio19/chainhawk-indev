@@ -117,7 +117,43 @@ export default function EntityRiskProfiles() {
       setCounterpartyExposure(exposureData);
     } catch (error) {
       console.error("Error loading counterparty data:", error);
+      toast({
+        title: "Warning",
+        description: "Failed to load counterparty exposure data",
+        variant: "destructive",
+      });
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadEntityData();
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleAnalyzeWallet = (walletAddress: string) => {
+    toast({
+      title: "Analysis Started",
+      description: `Analyzing wallet ${walletAddress.slice(0, 10)}...`,
+    });
+    // In a real app, this would navigate to wallet analysis page
+  };
+
+  const handleScheduleReview = (entityId: string) => {
+    toast({
+      title: "Review Scheduled",
+      description: `Compliance review scheduled for entity ${entityId}`,
+    });
+  };
+
+  const handleExportProfile = (profile: EntityRiskProfile) => {
+    toast({
+      title: "Export Started",
+      description: `Exporting profile for ${profile.entityName}`,
+    });
   };
 
   const handleProfileSelect = (profile: EntityRiskProfile) => {
