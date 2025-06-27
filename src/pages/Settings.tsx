@@ -50,6 +50,7 @@ import {
   Clock,
   User,
   Save,
+  Plus,
 } from "lucide-react";
 
 export default function Settings() {
