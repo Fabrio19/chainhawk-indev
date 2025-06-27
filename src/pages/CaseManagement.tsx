@@ -96,7 +96,9 @@ export default function CaseManagement() {
 
   const handleCreateCase = async () => {
     try {
+      console.log("Creating case with data:", newCase);
       const createdCase = await createCase(newCase);
+      console.log("Case created successfully:", createdCase);
       setCases([...cases, createdCase]);
       setShowCreateDialog(false);
       setNewCase({
