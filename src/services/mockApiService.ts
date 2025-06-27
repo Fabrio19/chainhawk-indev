@@ -96,6 +96,22 @@ class MockApiService {
   private currentUser: User | null = null;
   private currentToken: string | null = null;
 
+  // Generate mock data
+  private generateMockWallet() {
+    return {
+      address: `0x${Math.random().toString(16).substr(2, 40)}`,
+      chain: "ETH",
+      balance: Math.random() * 100000,
+      riskScore: Math.floor(Math.random() * 100),
+      lastActivity: new Date().toISOString(),
+      labels: ["Exchange", "DeFi"][Math.floor(Math.random() * 2)]
+        ? ["Exchange"]
+        : [],
+      isBlacklisted: Math.random() > 0.9,
+      entityType: "individual",
+    };
+  }
+
   // Initialize from localStorage
   constructor() {
     const token = localStorage.getItem("auth_token");
