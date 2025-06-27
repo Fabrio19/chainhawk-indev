@@ -496,6 +496,10 @@ export default function Settings() {
                       <Input
                         id="fiu-endpoint"
                         placeholder="https://fiuindia.gov.in/api"
+                        value={formData.fiuEndpoint}
+                        onChange={(e) =>
+                          handleInputChange("fiuEndpoint", e.target.value)
+                        }
                       />
                     </div>
                     <div>
