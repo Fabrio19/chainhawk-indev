@@ -457,13 +457,25 @@ export default function EntityRiskProfiles() {
                           {selectedProfile.entityType}
                         </CardDescription>
                       </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-3xl font-bold ${getRiskColor(selectedProfile.aggregateRiskScore)}`}
+                      <div className="flex items-center space-x-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleExportProfile(selectedProfile)}
                         >
-                          {selectedProfile.aggregateRiskScore}
+                          <Download className="h-4 w-4 mr-2" />
+                          Export
+                        </Button>
+                        <div className="text-right">
+                          <div
+                            className={`text-3xl font-bold ${getRiskColor(selectedProfile.aggregateRiskScore)}`}
+                          >
+                            {selectedProfile.aggregateRiskScore}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Risk Score
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">Risk Score</div>
                       </div>
                     </div>
                   </CardHeader>
