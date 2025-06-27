@@ -220,8 +220,17 @@ export default function Dashboard() {
                             {new Date(alert.timestamp).toLocaleString()}
                           </p>
                         </div>
-                        <Button variant="outline" size="sm">
-                          Investigate
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => investigateAlert(alert.id)}
+                          disabled={operationLoading[`investigate_${alert.id}`]}
+                        >
+                          {operationLoading[`investigate_${alert.id}`] ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            "Investigate"
+                          )}
                         </Button>
                       </div>
                     </Alert>
