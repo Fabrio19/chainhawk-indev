@@ -49,7 +49,9 @@ import {
 
 export default function EntityRiskProfiles() {
   const [profiles, setProfiles] = useState<EntityRiskProfile[]>([]);
-  const [filteredProfiles, setFilteredProfiles] = useState<EntityRiskProfile[]>([]);
+  const [filteredProfiles, setFilteredProfiles] = useState<EntityRiskProfile[]>(
+    [],
+  );
   const [selectedProfile, setSelectedProfile] =
     useState<EntityRiskProfile | null>(null);
   const [counterpartyExposure, setCounterpartyExposure] =
@@ -73,7 +75,7 @@ export default function EntityRiskProfiles() {
         (profile) =>
           profile.entityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           profile.entityId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          profile.entityType.toLowerCase().includes(searchTerm.toLowerCase())
+          profile.entityType.toLowerCase().includes(searchTerm.toLowerCase()),
       );
       setFilteredProfiles(filtered);
     }
@@ -315,7 +317,9 @@ export default function EntityRiskProfiles() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold">{filteredProfiles.length}</div>
+                  <div className="text-2xl font-bold">
+                    {filteredProfiles.length}
+                  </div>
                   <div className="text-sm text-gray-600">
                     {searchTerm ? "Filtered" : "Total"} Entities
                   </div>
@@ -329,7 +333,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-red-600">
-                    {filteredProfiles.filter((p) => p.aggregateRiskScore >= 70).length}
+                    {
+                      filteredProfiles.filter((p) => p.aggregateRiskScore >= 70)
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">High Risk</div>
                 </div>
@@ -342,7 +349,10 @@ export default function EntityRiskProfiles() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold">
-                    {filteredProfiles.filter((p) => p.kycLevel === "enhanced").length}
+                    {
+                      filteredProfiles.filter((p) => p.kycLevel === "enhanced")
+                        .length
+                    }
                   </div>
                   <div className="text-sm text-gray-600">Enhanced KYC</div>
                 </div>
@@ -356,8 +366,9 @@ export default function EntityRiskProfiles() {
                 <div>
                   <div className="text-2xl font-bold">
                     {
-                      filteredProfiles.filter((p) => p.complianceStatus === "compliant")
-                        .length
+                      filteredProfiles.filter(
+                        (p) => p.complianceStatus === "compliant",
+                      ).length
                     }
                   </div>
                   <div className="text-sm text-gray-600">Compliant</div>
@@ -387,38 +398,39 @@ export default function EntityRiskProfiles() {
                     </div>
                   ) : (
                     filteredProfiles.map((profile) => (
-                    <div
-                      key={profile.entityId}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                        selectedProfile?.entityId === profile.entityId
-                          ? "bg-blue-50 border-blue-200"
-                          : "hover:bg-gray-50"
-                      }`}
-                      onClick={() => handleProfileSelect(profile)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          {getEntityTypeIcon(profile.entityType)}
-                          <span className="font-medium text-sm">
-                            {profile.entityName}
-                          </span>
+                      <div
+                        key={profile.entityId}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          selectedProfile?.entityId === profile.entityId
+                            ? "bg-blue-50 border-blue-200"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleProfileSelect(profile)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            {getEntityTypeIcon(profile.entityType)}
+                            <span className="font-medium text-sm">
+                              {profile.entityName}
+                            </span>
+                          </div>
+                          <div
+                            className={`text-lg font-bold ${getRiskColor(profile.aggregateRiskScore)}`}
+                          >
+                            {profile.aggregateRiskScore}
+                          </div>
                         </div>
-                        <div
-                          className={`text-lg font-bold ${getRiskColor(profile.aggregateRiskScore)}`}
-                        >
-                          {profile.aggregateRiskScore}
+                        <div className="flex items-center justify-between">
+                          {getKycLevelBadge(profile.kycLevel)}
+                          {getComplianceStatusBadge(profile.complianceStatus)}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-2">
+                          {profile.linkedWallets.length} wallet(s) •{" "}
+                          {profile.entityType}
                         </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        {getKycLevelBadge(profile.kycLevel)}
-                        {getComplianceStatusBadge(profile.complianceStatus)}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-2">
-                        {profile.linkedWallets.length} wallet(s) •{" "}
-                        {profile.entityType}
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
