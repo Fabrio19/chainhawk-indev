@@ -353,3 +353,196 @@ model LEReport {
   @@index([status])
   @@index([generatedAt])
 }
+
+enum BridgeProtocol {
+  STARGATE
+  WORMHOLE
+  SYNAPSE
+  CELER
+}
+
+enum BridgeTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model BridgeTransaction {
+  id                  String                @id @default(uuid()) @db.Uuid
+  bridgeProtocol      BridgeProtocol        @map("bridge_protocol")
+  sourceChain         String                @map("source_chain")
+  destinationChain    String                @map("destination_chain")
+  sourceAddress       String                @map("source_address")
+  destinationAddress  String                @map("destination_address")
+  tokenAddress        String                @map("token_address")
+  tokenSymbol         String                @map("token_symbol")
+  amount              String                // Amount as string to preserve precision
+  transactionHash     String                @map("transaction_hash")
+  blockNumber         Int                   @map("block_number")
+  eventType           String                @map("event_type")
+  timestamp           DateTime
+  status              BridgeTransactionStatus @default(PENDING)
+  riskScore           Float?                @map("risk_score") // 0.0 to 1.0
+  riskFlags           Json?                 @map("risk_flags") // Array of risk flags
+  metadata            Json?                 // Additional bridge-specific data
+  linkedTransactionId String?               @map("linked_transaction_id") @db.Uuid
+  analyzedAt          DateTime?             @map("analyzed_at")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  linkedTransaction   BridgeTransaction?    @relation("BridgeTransactionLink", fields: [linkedTransactionId], references: [id])
+  linkedTransactions  BridgeTransaction[]   @relation("BridgeTransactionLink")
+  walletFlows         WalletFlow[]
+  crossChainLinks     DetectedCrossChainLink[]
+
+  @@map("bridge_transactions")
+  @@index([bridgeProtocol])
+  @@index([sourceChain])
+  @@index([destinationChain])
+  @@index([sourceAddress])
+  @@index([destinationAddress])
+  @@index([tokenAddress])
+  @@index([transactionHash])
+  @@index([status])
+  @@index([riskScore])
+  @@index([timestamp])
+  @@index([createdAt])
+}
+
+enum FlowType {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+  BRIDGE_IN
+  BRIDGE_OUT
+}
+
+enum FlowStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  SUSPICIOUS
+}
+
+model WalletFlow {
+  id                String     @id @default(uuid()) @db.Uuid
+  walletAddress     String     @map("wallet_address")
+  chain             String
+  flowType          FlowType   @map("flow_type")
+  tokenAddress      String     @map("token_address")
+  tokenSymbol       String     @map("token_symbol")
+  amount            String     // Amount as string to preserve precision
+  transactionHash   String     @map("transaction_hash")
+  blockNumber       Int        @map("block_number")
+  timestamp         DateTime
+  status            FlowStatus @default(PENDING)
+  riskScore         Float?     @map("risk_score") // 0.0 to 1.0
+  riskFlags         Json?      @map("risk_flags") // Array of risk flags
+  metadata          Json?      // Additional flow data
+  bridgeTransactionId String?  @map("bridge_transaction_id") @db.Uuid
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  bridgeTransaction BridgeTransaction? @relation(fields: [bridgeTransactionId], references: [id])
+  crossChainLinks   DetectedCrossChainLink[]
+
+  @@map("wallet_flows")
+  @@index([walletAddress])
+  @@index([chain])
+  @@index([flowType])
+  @@index([tokenAddress])
+  @@index([transactionHash])
+  @@index([status])
+  @@index([riskScore])
+  @@index([timestamp])
+  @@index([createdAt])
+}
+
+enum LinkType {
+  BRIDGE_TRANSFER
+  SIMILAR_PATTERN
+  TIME_PROXIMITY
+  AMOUNT_MATCH
+  ADDRESS_ASSOCIATION
+}
+
+enum LinkConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  CONFIRMED
+}
+
+model DetectedCrossChainLink {
+  id                    String          @id @default(uuid()) @db.Uuid
+  sourceWalletAddress   String          @map("source_wallet_address")
+  destinationWalletAddress String       @map("destination_wallet_address")
+  sourceChain           String          @map("source_chain")
+  destinationChain      String          @map("destination_chain")
+  linkType              LinkType        @map("link_type")
+  confidence            LinkConfidence  @default(MEDIUM)
+  tokenAddress          String          @map("token_address")
+  tokenSymbol           String          @map("token_symbol")
+  totalAmount           String          @map("total_amount") // Total amount across chains
+  transactionCount      Int             @map("transaction_count")
+  firstSeenAt           DateTime        @map("first_seen_at")
+  lastSeenAt            DateTime        @map("last_seen_at")
+  riskScore             Float?          @map("risk_score") // 0.0 to 1.0
+  riskFlags             Json?           @map("risk_flags") // Array of risk flags
+  metadata              Json?           // Additional link data
+  bridgeTransactionIds  String[]        @map("bridge_transaction_ids") @db.Uuid // Array of related bridge transactions
+  walletFlowIds         String[]        @map("wallet_flow_ids") @db.Uuid // Array of related wallet flows
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  bridgeTransactions    BridgeTransaction[]
+  walletFlows           WalletFlow[]
+
+  @@map("detected_crosschain_links")
+  @@index([sourceWalletAddress])
+  @@index([destinationWalletAddress])
+  @@index([sourceChain])
+  @@index([destinationChain])
+  @@index([linkType])
+  @@index([confidence])
+  @@index([riskScore])
+  @@index([firstSeenAt])
+  @@index([createdAt])
+}
+
+enum RiskCategory {
+  SANCTIONS_MATCH
+  HIGH_VALUE_TRANSFER
+  FREQUENT_BRIDGE_USAGE
+  SUSPICIOUS_PATTERN
+  MIXER_ASSOCIATION
+  DARKNET_ASSOCIATION
+  CIRCULAR_FLOW
+  RAPID_MOVEMENT
+  UNUSUAL_TIMING
+  KNOWN_SCAM
+}
+
+model RiskScore {
+  id              String       @id @default(uuid()) @db.Uuid
+  entityType      String       @map("entity_type") // "wallet", "transaction", "flow", "link"
+  entityId        String       @map("entity_id") // UUID of the related entity
+  riskCategory    RiskCategory @map("risk_category")
+  score           Float        // 0.0 to 1.0
+  confidence      Float        // 0.0 to 1.0
+  description     String
+  evidence        Json?        // Supporting evidence
+  metadata        Json?        // Additional risk data
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@map("risk_scores")
+  @@index([entityType])
+  @@index([entityId])
+  @@index([riskCategory])
+  @@index([score])
+  @@index([createdAt])
+}

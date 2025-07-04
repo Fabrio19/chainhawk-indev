@@ -32,6 +32,7 @@ import {
   LogOut,
   User,
   ChevronDown,
+  Activity,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -59,6 +60,8 @@ const getNavigation = (userRole?: string) => {
       href: "/continuous-monitoring",
       icon: AlertTriangle,
     },
+    { name: "Bridge Monitoring", href: "/bridge-monitoring", icon: Activity },
+    { name: "Test Page", href: "/test", icon: Activity },
     { name: "Case Management", href: "/case-management", icon: FolderOpen },
     {
       name: "Enhanced Cases",

@@ -1,27 +1,46 @@
-# Stop and remove existing MinIO container (ignore errors if not running)
-Write-Host "🛑 Stopping and removing existing MinIO container..." -ForegroundColor Yellow
-docker stop minio 2>$null
-docker rm minio 2>$null
+# ChainHawk Start Script for Windows PowerShell
+# This script starts the frontend and backend services
 
-# Start MinIO with WORM mode enabled
-Write-Host "🚀 Starting MinIO with WORM mode enabled..." -ForegroundColor Green
-docker run -d --name minio -p 9000:9000 -p 9001:9001 `
-  -e "MINIO_ROOT_USER=admin" -e "MINIO_ROOT_PASSWORD=password123" `
-  minio/minio server /data --console-address ":9001" --worm
+Write-Host "🚀 Starting ChainHawk Application..." -ForegroundColor Green
+Write-Host "=====================================" -ForegroundColor Green
+Write-Host ""
 
-Write-Host "✅ MinIO started with WORM mode enabled." -ForegroundColor Green
-
-# Wait a few seconds for MinIO to initialize
-Write-Host "⏳ Waiting for MinIO to initialize..." -ForegroundColor Yellow
-Start-Sleep -Seconds 5
-
-# (Optional) Start backend and frontend with Docker Compose
-if (Test-Path "docker-compose.yml") {
-    Write-Host "🟢 Starting backend and frontend with Docker Compose..." -ForegroundColor Green
-    docker-compose up -d
-} else {
-    Write-Host "⚠️  docker-compose.yml not found in project root. Please start backend/frontend manually if needed." -ForegroundColor Yellow
+# Check if we're in the right directory
+if (-not (Test-Path "package.json")) {
+    Write-Host "❌ Please run this script from the project root directory" -ForegroundColor Red
+    exit 1
 }
 
-Write-Host "🎉 All done! MinIO is now running in WORM mode." -ForegroundColor Green
-Write-Host "MinIO Console: http://localhost:9001 (admin/password123)" -ForegroundColor Cyan 
+# Check if backend directory exists
+if (-not (Test-Path "backend")) {
+    Write-Host "❌ Backend directory not found" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "📋 Starting services..." -ForegroundColor Yellow
+Write-Host ""
+
+# Start backend in a new PowerShell window
+Write-Host "🔧 Starting Backend API..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'; npm run dev"
+
+# Wait a moment for backend to start
+Start-Sleep -Seconds 3
+
+# Start frontend in current window
+Write-Host "🎨 Starting Frontend..." -ForegroundColor Cyan
+Write-Host ""
+
+# Check if frontend dependencies are installed
+if (-not (Test-Path "node_modules")) {
+    Write-Host "📦 Installing frontend dependencies..." -ForegroundColor Yellow
+    npm install
+}
+
+# Start the frontend development server
+Write-Host "🌐 Starting Vite development server..." -ForegroundColor Green
+Write-Host "   Frontend will be available at: http://localhost:8080" -ForegroundColor Cyan
+Write-Host "   Backend API will be available at: http://localhost:3001" -ForegroundColor Cyan
+Write-Host ""
+
+npm run dev 

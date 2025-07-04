@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import {
   Card,
@@ -20,7 +20,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { traceTransaction, type Transaction } from "@/lib/api";
+import { traceTransaction } from "@/lib/api";
+import type { Transaction } from "@/lib/types";
 import {
   GitBranch,
   Search,
@@ -33,6 +34,7 @@ import {
   Filter,
   AlertTriangle,
   CheckCircle,
+  Clock,
 } from "lucide-react";
 
 export default function TransactionTracing() {
@@ -41,19 +43,157 @@ export default function TransactionTracing() {
   const [loading, setLoading] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [traceDepth, setTraceDepth] = useState(3);
+  const [exporting, setExporting] = useState(false);
 
   const handleTrace = async () => {
     if (!searchHash.trim()) return;
 
     setLoading(true);
     try {
-      const results = await traceTransaction(searchHash);
+      const results = await traceTransaction(searchHash, traceDepth);
       setTraceResults(results);
       setSearchPerformed(true);
     } catch (error) {
       console.error("Error tracing transaction:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = async (format: 'pdf' | 'csv' | 'json') => {
+    if (!searchPerformed || traceResults.length === 0) return;
+
+    setExporting(true);
+    try {
+      // Create export data
+      const exportData = {
+        transactionHash: searchHash,
+        traceDepth: traceDepth,
+        timestamp: new Date().toISOString(),
+        results: traceResults,
+        summary: {
+          totalTransactions: traceResults.length,
+          chainsInvolved: new Set(traceResults.map(tx => tx.chain)).size,
+          suspiciousTransactions: traceResults.filter(tx => tx.category === "suspicious").length,
+          totalVolume: traceResults.reduce((sum, tx) => sum + tx.amount, 0)
+        }
+      };
+
+      if (format === 'json') {
+        // Export as JSON
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `trace-${searchHash}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (format === 'csv') {
+        // Export as CSV
+        const headers = ['Hash', 'From', 'To', 'Amount', 'Currency', 'Chain', 'Timestamp', 'Risk Category', 'Risk Flags'];
+        const csvContent = [
+          headers.join(','),
+          ...traceResults.map(tx => [
+            tx.hash,
+            tx.from,
+            tx.to,
+            tx.amount,
+            tx.currency,
+            tx.chain,
+            tx.timestamp,
+            tx.category,
+            tx.riskFlags.join(';')
+          ].join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `trace-${searchHash}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (format === 'pdf') {
+        // For PDF, we'll create a simple HTML report that can be printed
+        const htmlContent = `
+          <html>
+            <head>
+              <title>Transaction Trace Report - ${searchHash}</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .section { margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .summary { background-color: #f9f9f9; padding: 15px; border-radius: 5px; }
+                @media print { body { margin: 0; } }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <h1>Transaction Trace Report</h1>
+                <p>Transaction Hash: ${searchHash}</p>
+                <p>Trace Depth: ${traceDepth}</p>
+                <p>Generated: ${new Date().toISOString()}</p>
+              </div>
+              
+              <div class="section">
+                <h2>Trace Summary</h2>
+                <div class="summary">
+                  <p><strong>Total Transactions:</strong> ${exportData.summary.totalTransactions}</p>
+                  <p><strong>Chains Involved:</strong> ${exportData.summary.chainsInvolved}</p>
+                  <p><strong>Suspicious Transactions:</strong> ${exportData.summary.suspiciousTransactions}</p>
+                  <p><strong>Total Volume:</strong> ${exportData.summary.totalVolume.toFixed(4)} ETH</p>
+                </div>
+              </div>
+              
+              <div class="section">
+                <h2>Transaction Details</h2>
+                <table>
+                  <tr>
+                    <th>Hash</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Amount</th>
+                    <th>Chain</th>
+                    <th>Risk</th>
+                  </tr>
+                  ${traceResults.map(tx => `
+                    <tr>
+                      <td>${tx.hash.slice(0, 8)}...</td>
+                      <td>${tx.from.slice(0, 8)}...</td>
+                      <td>${tx.to.slice(0, 8)}...</td>
+                      <td>${tx.amount.toFixed(4)} ${tx.currency}</td>
+                      <td>${tx.chain}</td>
+                      <td>${tx.category}</td>
+                    </tr>
+                  `).join('')}
+                </table>
+              </div>
+            </body>
+          </html>
+        `;
+        
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `trace-${searchHash}-${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error exporting trace:", error);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -155,10 +295,35 @@ export default function TransactionTracing() {
                 <Filter className="h-4 w-4 mr-2" />
                 Filters
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExport('pdf')}
+                  disabled={exporting || !searchPerformed}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExport('csv')}
+                  disabled={exporting || !searchPerformed}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  CSV
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => handleExport('json')}
+                  disabled={exporting || !searchPerformed}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  JSON
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -214,25 +379,32 @@ export default function TransactionTracing() {
             {/* Trace Visualization */}
             <Card>
               <CardHeader>
-                <CardTitle>Fund Flow Visualization</CardTitle>
+                <CardTitle>Transaction Trace Path</CardTitle>
                 <CardDescription>
-                  Interactive trace showing the path of funds through multiple
-                  wallets
+                  Visual representation of the transaction flow across {traceDepth} hops
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-50 rounded-lg p-8 text-center">
-                  <GitBranch className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                    Interactive Flow Chart
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Visual representation of transaction flow would be displayed
-                    here using a graph library like D3.js or Cytoscape.js
-                  </p>
-                  <div className="flex justify-center space-x-4">
-                    <Button variant="outline">View Full Network</Button>
-                    <Button variant="outline">Export Visualization</Button>
+                <div className="space-y-4">
+                  {/* Simple trace visualization */}
+                  <div className="flex items-center space-x-2 overflow-x-auto pb-4">
+                    {traceResults.map((tx, index) => (
+                      <div key={tx.hash} className="flex items-center space-x-2 flex-shrink-0">
+                        <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {index + 1}
+                        </div>
+                        <div className="bg-gray-100 px-3 py-1 rounded text-xs font-mono">
+                          {tx.from.slice(0, 6)}...{tx.from.slice(-4)}
+                        </div>
+                        <div className="text-gray-400">→</div>
+                        <div className="bg-gray-100 px-3 py-1 rounded text-xs font-mono">
+                          {tx.to.slice(0, 6)}...{tx.to.slice(-4)}
+                        </div>
+                        {index < traceResults.length - 1 && (
+                          <div className="text-gray-400">→</div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>
@@ -294,7 +466,7 @@ export default function TransactionTracing() {
                             </TableCell>
                             <TableCell>{getRiskBadge(tx.category)}</TableCell>
                             <TableCell>
-                              <div className="flex space-x-1">
+                              <div className="flex space-x-2">
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -302,7 +474,11 @@ export default function TransactionTracing() {
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(`https://etherscan.io/tx/${tx.hash}`, '_blank')}
+                                >
                                   <ExternalLink className="h-3 w-3" />
                                 </Button>
                               </div>

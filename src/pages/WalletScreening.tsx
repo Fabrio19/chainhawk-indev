@@ -49,11 +49,13 @@ export default function WalletScreening() {
   const [sanctions, setSanctions] = useState<SanctionHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!searchAddress.trim()) return;
 
     setLoading(true);
+    setError(null);
     try {
       const [walletData, transactionData, sanctionData] = await Promise.all([
         searchWallet(searchAddress),
@@ -67,6 +69,7 @@ export default function WalletScreening() {
       setSearchPerformed(true);
     } catch (error) {
       console.error("Error searching wallet:", error);
+      setError("Failed to search wallet. Please check the address and try again.");
     } finally {
       setLoading(false);
     }
@@ -134,12 +137,20 @@ export default function WalletScreening() {
           </CardContent>
         </Card>
 
+        {/* Error Display */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Results */}
         {searchPerformed && wallet && (
           <Tabs defaultValue="overview" className="w-full">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="kyc">KYC Identity</TabsTrigger>
+              {/* Hide KYC tab - not implemented in backend */}
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
               <TabsTrigger value="sanctions">Sanctions</TabsTrigger>
             </TabsList>
@@ -153,53 +164,34 @@ export default function WalletScreening() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium">Address</label>
-                      <p className="text-sm text-gray-600 font-mono">{wallet.address}</p>
+                      <p className="text-sm text-gray-600 font-mono">{wallet?.address || "N/A"}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Risk Score</label>
-                      <Badge variant={wallet.riskScore > 70 ? "destructive" : wallet.riskScore > 40 ? "default" : "secondary"}>
-                        {wallet.riskScore}
+                      <Badge variant={wallet?.riskScore > 70 ? "destructive" : wallet?.riskScore > 40 ? "default" : "secondary"}>
+                        {wallet?.riskScore || 0}
                       </Badge>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Status</label>
                       <div className="flex items-center gap-2">
-                        {wallet.isBlacklisted ? (
+                        {wallet?.isBlacklisted ? (
                           <AlertTriangle className="h-4 w-4 text-red-500" />
                         ) : (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         )}
-                        <span>{wallet.isBlacklisted ? "Blacklisted" : "Clear"}</span>
+                        <span>{wallet?.isBlacklisted ? "Blacklisted" : "Clear"}</span>
                       </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium">Balance</label>
                       <p className="text-sm text-gray-600">
-                        {typeof wallet.balance === "number"
+                        {typeof wallet?.balance === "number"
                           ? `$${wallet.balance.toLocaleString(undefined, { maximumFractionDigits: 4 })}`
                           : "N/A"}
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="kyc" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>KYC Identity Linkage</CardTitle>
-                  <CardDescription>
-                    Link and manage KYC identities for this wallet address
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <KYCIdentityLinkage 
-                    walletAddress={wallet.address}
-                    onLinkSuccess={(result) => {
-                      console.log('KYC linked successfully:', result);
-                    }}
-                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -222,50 +214,58 @@ export default function WalletScreening() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions.map((tx) => (
-                        <TableRow key={tx.hash}>
-                          <TableCell className="font-mono text-xs">
-                            {tx.hash.slice(0, 10)}...
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              {tx.from === wallet.address ? (
-                                <>
-                                  <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
-                                  <span className="text-red-600">Out</span>
-                                </>
-                              ) : (
-                                <>
-                                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                                  <span className="text-green-600">In</span>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {tx.amount.toFixed(4)} {tx.currency}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">
-                            {(tx.from === wallet.address ? tx.to : tx.from)
-                              .slice(0, 8)
-                              .concat("...")}
-                          </TableCell>
-                          <TableCell>
-                            {new Date(tx.timestamp).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                tx.category === "suspicious"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                            >
-                              {tx.category}
-                            </Badge>
+                      {transactions.length > 0 ? (
+                        transactions.map((tx) => (
+                          <TableRow key={tx.hash}>
+                            <TableCell className="font-mono text-xs">
+                              {tx.hash?.slice(0, 10)}...
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {tx.from === wallet?.address ? (
+                                  <>
+                                    <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                                    <span className="text-red-600">Out</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                                    <span className="text-green-600">In</span>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {tx.amount?.toFixed(4) || "N/A"} {tx.currency || ""}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                              {(tx.from === wallet?.address ? tx.to : tx.from)
+                                ?.slice(0, 8)
+                                .concat("...") || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {tx.timestamp ? new Date(tx.timestamp).toLocaleDateString() : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  tx.category === "suspicious"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {tx.category || "normal"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                            No transactions found
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>

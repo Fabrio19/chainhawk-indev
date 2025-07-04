@@ -15,9 +15,8 @@ import { Toaster } from "@/components/ui/toaster";
 import {
   getDashboardStats,
   getActiveAlerts,
-  type DashboardStats,
-  type Alert as AlertType,
 } from "@/lib/api";
+import type { DashboardStats, Alert as AlertType } from "@/lib/types";
 import { useDashboardOperations } from "@/hooks/useDashboardOperations";
 import {
   TrendingUp,
@@ -35,6 +34,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Dashboard operations hook
   const {
@@ -49,6 +49,7 @@ export default function Dashboard() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        setError(null);
         const [statsData, alertsData] = await Promise.all([
           getDashboardStats(),
           getActiveAlerts(),
@@ -57,6 +58,7 @@ export default function Dashboard() {
         setAlerts(alertsData);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
+        setError("Failed to load dashboard data. Please check your connection and try again.");
       } finally {
         setLoading(false);
       }
@@ -70,6 +72,22 @@ export default function Dashboard() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
         </div>
       </DashboardLayout>
     );
@@ -114,7 +132,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.totalWallets.toLocaleString()}
+                {stats?.totalWallets?.toLocaleString() || "N/A"}
               </div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-green-600 flex items-center">
@@ -134,7 +152,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                {stats?.highRiskWallets}
+                {stats?.highRiskWallets || "N/A"}
               </div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-red-600 flex items-center">
@@ -154,12 +172,12 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.todayTransactions.toLocaleString()}
+                {stats?.todayTransactions?.toLocaleString() || "N/A"}
               </div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-orange-600 flex items-center">
                   <AlertTriangle className="h-3 w-3 mr-1" />
-                  {stats?.suspiciousTransactions} suspicious
+                  {stats?.suspiciousTransactions || 0} suspicious
                 </span>
               </p>
             </CardContent>
@@ -174,9 +192,9 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {stats?.complianceScore}%
+                {stats?.complianceScore || "N/A"}%
               </div>
-              <Progress value={stats?.complianceScore} className="mt-2" />
+              <Progress value={stats?.complianceScore || 0} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -267,41 +285,32 @@ export default function Dashboard() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => generateSTRReport()}
-                  disabled={operationLoading.generateSTR}
+                  disabled={true}
+                  title="STR Report generation not implemented in backend"
                 >
-                  {operationLoading.generateSTR ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <FileText className="h-4 w-4 mr-2" />
-                  )}
+                  <FileText className="h-4 w-4 mr-2" />
                   Generate STR Report
+                  <Badge variant="secondary" className="ml-2 text-xs">Coming Soon</Badge>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => runSanctionCheck()}
-                  disabled={operationLoading.sanctionCheck}
+                  disabled={true}
+                  title="Sanction check not implemented in backend"
                 >
-                  {operationLoading.sanctionCheck ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Shield className="h-4 w-4 mr-2" />
-                  )}
+                  <Shield className="h-4 w-4 mr-2" />
                   Run Sanction Check
+                  <Badge variant="secondary" className="ml-2 text-xs">Coming Soon</Badge>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => traceTransaction()}
-                  disabled={operationLoading.traceTransaction}
+                  disabled={true}
+                  title="Transaction tracing not implemented in backend"
                 >
-                  {operationLoading.traceTransaction ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Activity className="h-4 w-4 mr-2" />
-                  )}
+                  <Activity className="h-4 w-4 mr-2" />
                   Trace Transaction
+                  <Badge variant="secondary" className="ml-2 text-xs">Coming Soon</Badge>
                 </Button>
               </CardContent>
             </Card>
@@ -350,21 +359,21 @@ export default function Dashboard() {
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span>Open Cases</span>
-                    <span className="font-semibold">{stats?.openCases}</span>
+                    <span className="font-semibold">{stats?.openCases || "N/A"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Pending Reports</span>
                     <span className="font-semibold">
-                      {stats?.pendingReports}
+                      {stats?.pendingReports || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Active Investigations</span>
-                    <span className="font-semibold">7</span>
+                    <span className="font-semibold">N/A</span>
                   </div>
                   <div className="flex justify-between">
                     <span>This Month STRs</span>
-                    <span className="font-semibold">15</span>
+                    <span className="font-semibold">N/A</span>
                   </div>
                 </div>
               </CardContent>

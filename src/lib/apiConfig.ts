@@ -53,7 +53,7 @@ export const getApiBaseUrl = (): string => {
 
 // Check if we should use mock API
 export const shouldUseMockApi = (): boolean => {
-  return isCloudEnvironment();
+  return false; // Always use real API
 };
 
 // Environment info

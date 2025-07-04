@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { realApiService } from "@/services/realApiService";
-import { shouldUseMockApi } from "@/lib/apiConfig";
-import { mockApiService } from "@/services/mockApiService";
 
 interface OperationResult {
   success: boolean;
@@ -13,14 +11,9 @@ interface OperationResult {
 export const useDashboardOperations = () => {
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
-  const useMockApi = shouldUseMockApi();
 
   const setOperationLoading = (operation: string, loading: boolean) => {
     setIsLoading((prev) => ({ ...prev, [operation]: loading }));
-  };
-
-  const getApiService = () => {
-    return useMockApi ? mockApiService : realApiService;
   };
 
   // Screen new wallet
@@ -38,14 +31,9 @@ export const useDashboardOperations = () => {
         return { success: false, error: "Wallet address is required" };
       }
 
-      const apiService = getApiService();
       let result;
 
-      if (useMockApi) {
-        result = await apiService.screenWallet(walletAddress);
-      } else {
-        result = await realApiService.screenWallet(walletAddress);
-      }
+      result = await realApiService.screenWallet(walletAddress);
 
       if (result.success) {
         const walletData = result.data;
@@ -82,14 +70,9 @@ export const useDashboardOperations = () => {
     setOperationLoading(operation, true);
 
     try {
-      const apiService = getApiService();
       let result;
 
-      if (useMockApi) {
-        result = await apiService.generateReport("STR");
-      } else {
-        result = await realApiService.prepareReport("STR");
-      }
+      result = await realApiService.prepareReport("STR");
 
       if (result.success) {
         toast({
@@ -134,14 +117,9 @@ export const useDashboardOperations = () => {
         return { success: false, error: "Wallet address is required" };
       }
 
-      const apiService = getApiService();
       let result;
 
-      if (useMockApi) {
-        result = await apiService.screenSanctions(walletAddress);
-      } else {
-        result = await realApiService.runSanctionCheck(walletAddress);
-      }
+      result = await realApiService.runSanctionCheck(walletAddress);
 
       if (result.success) {
         const sanctions = result.data || [];
@@ -195,14 +173,9 @@ export const useDashboardOperations = () => {
         };
       }
 
-      const apiService = getApiService();
       let result;
 
-      if (useMockApi) {
-        result = await apiService.traceTransaction(transactionHash);
-      } else {
-        result = await realApiService.traceTransaction(transactionHash);
-      }
+      result = await realApiService.traceTransaction(transactionHash);
 
       if (result.success) {
         toast({
@@ -241,14 +214,9 @@ export const useDashboardOperations = () => {
     setOperationLoading(operation, true);
 
     try {
-      const apiService = getApiService();
       let result;
 
-      if (useMockApi) {
-        result = await apiService.investigateAlert(alertId);
-      } else {
-        result = await realApiService.investigateAlert(alertId);
-      }
+      result = await realApiService.investigateAlert(alertId);
 
       if (result.success) {
         toast({

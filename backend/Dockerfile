@@ -3,11 +3,14 @@ FROM node:18-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Prisma and other packages
+# Install system dependencies for Prisma, bcrypt, and other packages
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
     ca-certificates \
+    python3 \
+    python3-pip \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files first
