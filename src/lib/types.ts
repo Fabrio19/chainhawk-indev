@@ -23,6 +23,16 @@ export interface Transaction {
   gasUsed: number;
   riskFlags: string[];
   category: "normal" | "suspicious" | "high-risk";
+  // Advanced tracer fields
+  depth?: number;
+  riskLevel?: number;
+  direction?: 'in' | 'out';
+  isCrossChain?: boolean;
+  bridgeName?: string;
+  viaContract?: boolean;
+  contractInteraction?: string;
+  erc20Transfers?: any[];
+  erc721Transfers?: any[];
 }
 
 export interface SanctionHit {

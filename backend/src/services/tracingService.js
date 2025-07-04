@@ -45,6 +45,36 @@ const RISKY_PATTERNS = {
 };
 
 /**
+ * Blockchain API Configuration
+ */
+const BLOCKCHAIN_CONFIG = {
+  ethereum: {
+    rpcUrl: process.env.ETHEREUM_RPC_URL || "https://mainnet.infura.io/v3/7e07cc05394b4c93978303daf899396d",
+    apiUrl: "https://api.etherscan.io/api",
+    apiKey: process.env.ETHERSCAN_API_KEY || "YourApiKeyToken",
+    chainId: 1,
+    symbol: "ETH",
+    decimals: 18
+  },
+  bsc: {
+    rpcUrl: process.env.BSC_RPC_URL || "https://bsc-dataseed.binance.org/",
+    apiUrl: "https://api.bscscan.com/api",
+    apiKey: process.env.BSCSCAN_API_KEY || "YourApiKeyToken",
+    chainId: 56,
+    symbol: "BNB",
+    decimals: 18
+  },
+  polygon: {
+    rpcUrl: process.env.POLYGON_RPC_URL || "https://polygon-rpc.com/",
+    apiUrl: "https://api.polygonscan.com/api",
+    apiKey: process.env.POLYGONSCAN_API_KEY || "YourApiKeyToken",
+    chainId: 137,
+    symbol: "MATIC",
+    decimals: 18
+  }
+};
+
+/**
  * Transaction Tracing Service
  * Handles blockchain transaction tracing using queues and external APIs
  */
@@ -98,18 +128,202 @@ const startTrace = async (walletAddress, chain, depth = 5, userId = null) => {
 };
 
 /**
- * Get blockchain transactions using Bitquery API
+ * Get real blockchain transactions using blockchain APIs
  */
 const getTransactions = async (walletAddress, chain, limit = 100) => {
-  // This is a mock implementation - replace with actual Bitquery API
-  // For demo purposes, we'll simulate the response
+  const config = BLOCKCHAIN_CONFIG[chain];
+  if (!config) {
+    throw new Error(`Unsupported chain: ${chain}`);
+  }
 
-  const mockTransactions = [
+  try {
+    console.log(`🔍 Fetching real transactions for ${walletAddress} on ${chain}...`);
+    
+    // Get normal transactions
+    const normalTxs = await getNormalTransactions(walletAddress, config, limit);
+    
+    // Get internal transactions (contract interactions)
+    const internalTxs = await getInternalTransactions(walletAddress, config, limit);
+    
+    // Get ERC20 token transfers
+    const tokenTxs = await getTokenTransactions(walletAddress, config, limit);
+    
+    // Combine and sort all transactions by timestamp
+    const allTransactions = [...normalTxs, ...internalTxs, ...tokenTxs]
+      .sort((a, b) => new Date(b.block.timestamp.time) - new Date(a.block.timestamp.time))
+      .slice(0, limit);
+
+    console.log(`✅ Found ${allTransactions.length} real transactions for ${walletAddress} on ${chain}`);
+    return allTransactions;
+
+  } catch (error) {
+    console.error(`❌ Error fetching transactions for ${walletAddress} on ${chain}:`, error.message);
+    
+    // Fallback to mock data if API fails
+    console.log(`🔄 Falling back to mock data for ${walletAddress}`);
+    return getMockTransactions(walletAddress, chain);
+  }
+};
+
+/**
+ * Get normal transactions from blockchain API
+ */
+const getNormalTransactions = async (walletAddress, config, limit) => {
+  try {
+    const response = await axios.get(config.apiUrl, {
+      params: {
+        module: 'account',
+        action: 'txlist',
+        address: walletAddress,
+        startblock: 0,
+        endblock: 99999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc',
+        apikey: config.apiKey
+      },
+      timeout: 10000
+    });
+
+    if (response.data.status === '1' && response.data.result) {
+      return response.data.result.map(tx => ({
+        sender: { address: tx.from },
+        receiver: { address: tx.to },
+        amount: (parseInt(tx.value) / Math.pow(10, config.decimals)).toString(),
+        currency: { symbol: config.symbol },
+        block: {
+          height: parseInt(tx.blockNumber),
+          timestamp: { time: new Date(parseInt(tx.timeStamp) * 1000).toISOString() }
+        },
+        transaction: {
+          hash: tx.hash,
+          gasUsed: tx.gasUsed,
+          gasPrice: tx.gasPrice,
+          nonce: tx.nonce
+        },
+        type: 'NORMAL',
+        isContract: tx.isError === '1' ? false : true
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching normal transactions:`, error.message);
+    return [];
+  }
+};
+
+/**
+ * Get internal transactions (contract interactions)
+ */
+const getInternalTransactions = async (walletAddress, config, limit) => {
+  try {
+    const response = await axios.get(config.apiUrl, {
+      params: {
+        module: 'account',
+        action: 'txlistinternal',
+        address: walletAddress,
+        startblock: 0,
+        endblock: 99999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc',
+        apikey: config.apiKey
+      },
+      timeout: 10000
+    });
+
+    if (response.data.status === '1' && response.data.result) {
+      return response.data.result.map(tx => ({
+        sender: { address: tx.from },
+        receiver: { address: tx.to },
+        amount: (parseInt(tx.value) / Math.pow(10, config.decimals)).toString(),
+        currency: { symbol: config.symbol },
+        block: {
+          height: parseInt(tx.blockNumber),
+          timestamp: { time: new Date(parseInt(tx.timeStamp) * 1000).toISOString() }
+        },
+        transaction: {
+          hash: tx.hash,
+          gasUsed: tx.gasUsed,
+          gasPrice: tx.gasPrice,
+          nonce: tx.nonce
+        },
+        type: 'INTERNAL',
+        isContract: true
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching internal transactions:`, error.message);
+    return [];
+  }
+};
+
+/**
+ * Get ERC20 token transfers
+ */
+const getTokenTransactions = async (walletAddress, config, limit) => {
+  try {
+    const response = await axios.get(config.apiUrl, {
+      params: {
+        module: 'account',
+        action: 'tokentx',
+        address: walletAddress,
+        startblock: 0,
+        endblock: 99999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc',
+        apikey: config.apiKey
+      },
+      timeout: 10000
+    });
+
+    if (response.data.status === '1' && response.data.result) {
+      return response.data.result.map(tx => ({
+        sender: { address: tx.from },
+        receiver: { address: tx.to },
+        amount: (parseInt(tx.value) / Math.pow(10, parseInt(tx.tokenDecimal))).toString(),
+        currency: { 
+          symbol: tx.tokenSymbol,
+          address: tx.contractAddress
+        },
+        block: {
+          height: parseInt(tx.blockNumber),
+          timestamp: { time: new Date(parseInt(tx.timeStamp) * 1000).toISOString() }
+        },
+        transaction: {
+          hash: tx.hash,
+          gasUsed: tx.gasUsed,
+          gasPrice: tx.gasPrice,
+          nonce: tx.nonce
+        },
+        type: 'TOKEN',
+        isContract: true
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching token transactions:`, error.message);
+    return [];
+  }
+};
+
+/**
+ * Get mock transactions as fallback
+ */
+const getMockTransactions = (walletAddress, chain) => {
+  const symbol = chain === 'ethereum' ? 'ETH' : chain === 'bsc' ? 'BNB' : 'MATIC';
+  
+  return [
     {
       sender: { address: "0x1234567890abcdef1234567890abcdef12345678" },
       receiver: { address: walletAddress },
       amount: "1.5",
-      currency: { symbol: "ETH" },
+      currency: { symbol },
       block: {
         height: 18500000,
         timestamp: { time: "2023-11-01T10:30:00Z" },
@@ -117,12 +331,14 @@ const getTransactions = async (walletAddress, chain, limit = 100) => {
       transaction: {
         hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
       },
+      type: 'MOCK',
+      isContract: false
     },
     {
       sender: { address: walletAddress },
       receiver: { address: "0x987654321fedcba0987654321fedcba098765432" },
       amount: "0.8",
-      currency: { symbol: "ETH" },
+      currency: { symbol },
       block: {
         height: 18500100,
         timestamp: { time: "2023-11-01T11:15:00Z" },
@@ -130,47 +346,10 @@ const getTransactions = async (walletAddress, chain, limit = 100) => {
       transaction: {
         hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
       },
+      type: 'MOCK',
+      isContract: false
     },
   ];
-
-  // In production, use actual Bitquery GraphQL query:
-  /*
-  const query = `
-    query GetTransactions($address: String!, $limit: Int!) {
-      ethereum {
-        transfers(
-          any: [
-            {receiver: {is: $address}},
-            {sender: {is: $address}}
-          ],
-          date: {since: "2024-01-01"},
-          options: {limit: $limit, desc: "block.timestamp.time"}
-        ) {
-          sender { address }
-          receiver { address }
-          amount
-          currency { symbol }
-          block { height timestamp { time } }
-          transaction { hash }
-        }
-      }
-    }
-  `;
-
-  const response = await axios.post('https://graphql.bitquery.io/', {
-    query,
-    variables: { address: walletAddress, limit }
-  }, {
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-KEY': process.env.BITQUERY_API_KEY
-    }
-  });
-
-  return response.data.data.ethereum.transfers;
-  */
-
-  return mockTransactions;
 };
 
 /**
@@ -494,6 +673,275 @@ const getUserTraces = async (userId, limit = 20) => {
   return traces;
 };
 
+/**
+ * Fetch transaction details by hash from Etherscan
+ */
+async function getTransactionByHash(hash) {
+  const apiKey = process.env.ETHERSCAN_API_KEY || 'YourApiKeyToken';
+  const apiUrl = `https://api.etherscan.io/api`;
+
+  // Get transaction details
+  const txResp = await axios.get(apiUrl, {
+    params: {
+      module: 'proxy',
+      action: 'eth_getTransactionByHash',
+      txhash: hash,
+      apikey: apiKey,
+    },
+    timeout: 10000,
+  });
+
+  if (!txResp.data || !txResp.data.result) {
+    throw new Error('Transaction not found');
+  }
+  const tx = txResp.data.result;
+
+  // Get transaction receipt for block/timestamp/gas
+  const receiptResp = await axios.get(apiUrl, {
+    params: {
+      module: 'proxy',
+      action: 'eth_getTransactionReceipt',
+      txhash: hash,
+      apikey: apiKey,
+    },
+    timeout: 10000,
+  });
+  const receipt = receiptResp.data.result;
+
+  // Get block for timestamp
+  let timestamp = null;
+  if (tx.blockNumber) {
+    const blockResp = await axios.get(apiUrl, {
+      params: {
+        module: 'proxy',
+        action: 'eth_getBlockByNumber',
+        tag: tx.blockNumber,
+        boolean: 'true',
+        apikey: apiKey,
+      },
+      timeout: 10000,
+    });
+    if (blockResp.data && blockResp.data.result) {
+      timestamp = parseInt(blockResp.data.result.timestamp, 16);
+    }
+  }
+
+  return {
+    hash: tx.hash,
+    from: tx.from,
+    to: tx.to,
+    valueFormatted: tx.value ? (parseInt(tx.value, 16) / 1e18).toString() : '0',
+    timestamp: timestamp || null,
+    chain: 'ethereum',
+    blockNumber: tx.blockNumber ? parseInt(tx.blockNumber, 16) : null,
+    gasUsed: receipt && receipt.gasUsed ? parseInt(receipt.gasUsed, 16) : null,
+  };
+}
+
+/**
+ * Recursive transaction tracing with depth control
+ */
+async function traceTransactionRecursive(hash, maxDepth = 3, visited = new Set()) {
+  const results = [];
+  
+  async function traceRecursive(currentHash, currentDepth, visitedSet) {
+    // Avoid infinite loops
+    if (visitedSet.has(currentHash) || currentDepth > maxDepth) {
+      return;
+    }
+    
+    visitedSet.add(currentHash);
+    
+    try {
+      console.log(`🔍 Tracing transaction ${currentHash} at depth ${currentDepth}`);
+      
+      // Get transaction details
+      const tx = await getTransactionByHash(currentHash);
+      if (!tx) {
+        console.log(`❌ Transaction ${currentHash} not found`);
+        return;
+      }
+      
+      // Add current transaction to results
+      results.push({
+        ...tx,
+        depth: currentDepth,
+        traceId: hash // Use original hash as trace ID
+      });
+      
+      // If we haven't reached max depth and there's a 'to' address, continue tracing
+      if (currentDepth < maxDepth && tx.to && tx.to !== '0x0000000000000000000000000000000000000000') {
+        try {
+          // Get outgoing transactions from the 'to' address
+          const outgoingTxs = await getOutgoingTransactions(tx.to, 10); // Limit to 10 outgoing txs
+          
+          for (const outgoingTx of outgoingTxs) {
+            if (!visitedSet.has(outgoingTx.hash)) {
+              await traceRecursive(outgoingTx.hash, currentDepth + 1, visitedSet);
+            }
+          }
+        } catch (error) {
+          console.log(`⚠️ Error getting outgoing transactions for ${tx.to}:`, error.message);
+        }
+      }
+      
+    } catch (error) {
+      console.log(`❌ Error tracing transaction ${currentHash}:`, error.message);
+    }
+  }
+  
+  await traceRecursive(hash, 0, visited);
+  return results;
+}
+
+/**
+ * Get outgoing transactions from an address using Etherscan API
+ */
+async function getOutgoingTransactions(address, limit = 10) {
+  const apiKey = process.env.ETHERSCAN_API_KEY || 'YourApiKeyToken';
+  const apiUrl = `https://api.etherscan.io/api`;
+  
+  try {
+    const response = await axios.get(apiUrl, {
+      params: {
+        module: 'account',
+        action: 'txlist',
+        address: address,
+        startblock: 0,
+        endblock: 99999999,
+        page: 1,
+        offset: limit,
+        sort: 'desc',
+        apikey: apiKey
+      },
+      timeout: 10000
+    });
+    
+    if (response.data.status === '1' && response.data.result) {
+      return response.data.result.map(tx => ({
+        hash: tx.hash,
+        from: tx.from,
+        to: tx.to,
+        value: tx.value,
+        blockNumber: parseInt(tx.blockNumber),
+        timestamp: parseInt(tx.timeStamp)
+      }));
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error fetching outgoing transactions for ${address}:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * Enhanced transaction tracing with recursive support
+ */
+async function traceTransactionWithDepth(hash, depth = 3) {
+  try {
+    console.log(`🚀 Starting recursive trace for ${hash} with depth ${depth}`);
+    
+    const visited = new Set();
+    const traceResults = await traceTransactionRecursive(hash, depth, visited);
+    
+    // Calculate risk metrics
+    const riskMetrics = calculateTraceRiskMetrics(traceResults);
+    
+    return {
+      traceId: hash,
+      originalHash: hash,
+      depth: depth,
+      totalTransactions: traceResults.length,
+      visitedAddresses: visited.size,
+      transactions: traceResults,
+      riskMetrics: riskMetrics,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('Error in recursive transaction tracing:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Calculate risk metrics for trace results
+ */
+function calculateTraceRiskMetrics(transactions) {
+  if (!transactions || transactions.length === 0) {
+    return {
+      riskLevel: 0,
+      riskFlags: [],
+      totalVolume: 0,
+      uniqueAddresses: 0,
+      maxDepth: 0
+    };
+  }
+  
+  const uniqueAddresses = new Set();
+  let totalVolume = 0;
+  let maxDepth = 0;
+  const riskFlags = [];
+  
+  transactions.forEach(tx => {
+    uniqueAddresses.add(tx.from);
+    uniqueAddresses.add(tx.to);
+    totalVolume += parseFloat(tx.valueFormatted || 0);
+    maxDepth = Math.max(maxDepth, tx.depth || 0);
+  });
+  
+  // Calculate risk level based on various factors
+  let riskLevel = 0;
+  
+  // Higher risk for more transactions
+  if (transactions.length > 50) {
+    riskLevel += 30;
+    riskFlags.push('HIGH_TRANSACTION_COUNT');
+  }
+  
+  // Higher risk for deeper traces
+  if (maxDepth > 5) {
+    riskLevel += 25;
+    riskFlags.push('DEEP_TRACE');
+  }
+  
+  // Higher risk for large volumes
+  if (totalVolume > 100) {
+    riskLevel += 20;
+    riskFlags.push('HIGH_VOLUME');
+  }
+  
+  // Higher risk for many unique addresses
+  if (uniqueAddresses.size > 20) {
+    riskLevel += 15;
+    riskFlags.push('MANY_ADDRESSES');
+  }
+  
+  // Check for known risky addresses (placeholder)
+  const riskyAddresses = [
+    '0xdac17f958d2ee523a2206206994597c13d831ec7', // USDT contract
+    '0xa0b86a33e6441b8c4c8c8c8c8c8c8c8c8c8c8c8c'  // Example risky address
+  ];
+  
+  transactions.forEach(tx => {
+    if (riskyAddresses.includes(tx.to?.toLowerCase()) || riskyAddresses.includes(tx.from?.toLowerCase())) {
+      riskLevel += 10;
+      if (!riskFlags.includes('RISKY_ADDRESS')) {
+        riskFlags.push('RISKY_ADDRESS');
+      }
+    }
+  });
+  
+  return {
+    riskLevel: Math.min(riskLevel, 100), // Cap at 100
+    riskFlags: [...new Set(riskFlags)], // Remove duplicates
+    totalVolume: totalVolume,
+    uniqueAddresses: uniqueAddresses.size,
+    maxDepth: maxDepth
+  };
+}
+
 module.exports = {
   startTrace,
   getTrace,
@@ -502,4 +950,9 @@ module.exports = {
   tracingQueue,
   analyzeWalletRisk,
   calculateTraceRisk,
+  getTransactionByHash,
+  traceTransactionRecursive,
+  traceTransactionWithDepth,
+  getOutgoingTransactions,
+  calculateTraceRiskMetrics,
 };

@@ -1,6 +1,5 @@
 // API Service for backend communication
-import { getApiBaseUrl, shouldUseMockApi } from "@/lib/apiConfig";
-import { mockApiService } from "./mockApiService";
+import { getApiBaseUrl } from "@/lib/apiConfig";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -53,10 +52,6 @@ class ApiService {
     };
   }
 
-  private shouldUseMock(): boolean {
-    return shouldUseMockApi();
-  }
-
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
     try {
       const data = await response.json();
@@ -83,10 +78,6 @@ class ApiService {
     email: string,
     password: string,
   ): Promise<ApiResponse<{ user: User; token: string }>> {
-    if (this.shouldUseMock()) {
-      return mockApiService.login(email, password);
-    }
-
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
@@ -120,10 +111,6 @@ class ApiService {
   }
 
   async getProfile(): Promise<ApiResponse<{ user: User; authMethod: string }>> {
-    if (this.shouldUseMock()) {
-      return mockApiService.getProfile();
-    }
-
     try {
       const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         headers: this.getAuthHeaders(),
@@ -326,10 +313,6 @@ class ApiService {
 
   // Health Check
   async healthCheck(): Promise<ApiResponse<any>> {
-    if (this.shouldUseMock()) {
-      return mockApiService.healthCheck();
-    }
-
     try {
       const response = await fetch("http://localhost:3001/health");
       return this.handleResponse(response);
@@ -350,6 +333,134 @@ class ApiService {
       return { success: false, error: "Network error" };
     }
   }
+
+  // Bridge Monitoring API
+  async getBridgeTransactions(params?: {
+    page?: number;
+    limit?: number;
+    protocol?: string;
+    chain?: string;
+    riskLevel?: string;
+    search?: string;
+  }): Promise<ApiResponse<{ transactions: any[]; pagination: any }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.set("page", params.page.toString());
+      if (params?.limit) queryParams.set("limit", params.limit.toString());
+      if (params?.protocol) queryParams.set("protocol", params.protocol);
+      if (params?.chain) queryParams.set("chain", params.chain);
+      if (params?.riskLevel) queryParams.set("riskLevel", params.riskLevel);
+      if (params?.search) queryParams.set("search", params.search);
+
+      const response = await fetch(`${API_BASE_URL}/bridges/transactions?${queryParams}`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async getCrossChainLinks(params?: {
+    page?: number;
+    limit?: number;
+    sourceChain?: string;
+    destinationChain?: string;
+    confidence?: string;
+  }): Promise<ApiResponse<{ links: any[]; pagination: any }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.set("page", params.page.toString());
+      if (params?.limit) queryParams.set("limit", params.limit.toString());
+      if (params?.sourceChain) queryParams.set("sourceChain", params.sourceChain);
+      if (params?.destinationChain) queryParams.set("destinationChain", params.destinationChain);
+      if (params?.confidence) queryParams.set("confidence", params.confidence);
+
+      const response = await fetch(`${API_BASE_URL}/bridges/crosschain-links?${queryParams}`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async getWalletFlows(params?: {
+    walletAddress?: string;
+    chain?: string;
+    flowType?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ flows: any[]; pagination: any }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.walletAddress) queryParams.set("walletAddress", params.walletAddress);
+      if (params?.chain) queryParams.set("chain", params.chain);
+      if (params?.flowType) queryParams.set("flowType", params.flowType);
+      if (params?.page) queryParams.set("page", params.page.toString());
+      if (params?.limit) queryParams.set("limit", params.limit.toString());
+
+      const response = await fetch(`${API_BASE_URL}/bridges/wallet-flows?${queryParams}`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async getBridgeStats(): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bridges/stats`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async getRiskAnalysis(): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bridges/risk-analysis`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async toggleMonitoringMode(useReal: boolean): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bridges/toggle-mode`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ useReal }),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
+
+  async getMonitoringStatus(): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/bridges/status`, {
+        headers: this.getAuthHeaders(),
+      });
+
+      return this.handleResponse(response);
+    } catch (error) {
+      return { success: false, error: "Network error" };
+    }
+  }
 }
 
 // Export singleton instance
@@ -357,17 +468,6 @@ export const apiService = new ApiService();
 export default apiService;
 
 export const getCases = async () => {
-  // Check if we should use mock API
-  if (shouldUseMockApi()) {
-    try {
-      const response = await mockApiService.getCases();
-      return response.success ? response.data : [];
-    } catch (error) {
-      console.error("Mock API error:", error);
-      return [];
-    }
-  }
-
   try {
     const response = await fetch(`${API_BASE_URL}/cases`, {
       headers: apiService.getAuthHeaders(),
@@ -380,8 +480,7 @@ export const getCases = async () => {
         "Backend returned HTML instead of JSON, falling back to mock data",
       );
       // Fallback to mock data when backend is not available
-      const mockResponse = await mockApiService.getCases();
-      return mockResponse.success ? mockResponse.data : [];
+      return [];
     }
 
     if (!response.ok) {
@@ -391,8 +490,7 @@ export const getCases = async () => {
         response.statusText,
       );
       // Fallback to mock data on error
-      const mockResponse = await mockApiService.getCases();
-      return mockResponse.success ? mockResponse.data : [];
+      return [];
     }
 
     const data = await response.json();
@@ -401,8 +499,7 @@ export const getCases = async () => {
     console.error("Error fetching cases:", error);
     // Fallback to mock data on network error
     try {
-      const mockResponse = await mockApiService.getCases();
-      return mockResponse.success ? mockResponse.data : [];
+      return [];
     } catch (mockError) {
       console.error("Mock fallback also failed:", mockError);
       return [];
@@ -433,31 +530,6 @@ export const getCaseById = async (id: string) => {
 };
 
 export const createCase = async (data: any) => {
-  // Check if we should use mock API
-  if (shouldUseMockApi()) {
-    try {
-      await simulateDelay(800);
-      const newCase = {
-        id: `CASE-${String(Date.now()).slice(-3)}`,
-        title: `Investigation: ${data.wallet_address?.slice(0, 10)}...`,
-        description: "New case created from frontend",
-        priority: "medium",
-        status: "open",
-        assignedTo: data.assigned_to || "Current User",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        relatedWallets: [data.wallet_address],
-        findings: [],
-        actions: [],
-        ...data,
-      };
-      return newCase;
-    } catch (error) {
-      console.error("Mock create case error:", error);
-      throw new Error("Failed to create case (mock)");
-    }
-  }
-
   try {
     const response = await fetch(`${API_BASE_URL}/cases`, {
       method: "POST",
@@ -518,10 +590,6 @@ export const createCase = async (data: any) => {
     };
   }
 };
-
-// Helper function for simulation delay
-const simulateDelay = (ms: number = 500) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
 export const updateCase = async (id: string, data: any) => {
   try {
@@ -878,20 +946,94 @@ export const downloadRegulatoryReport = async (reportId: string) => {
 };
 
 export const searchWallet = async (address: string) => {
-  const response = await fetch(`${API_BASE_URL}/wallets/${address}`, {
-    headers: apiService.getAuthHeaders(),
-  });
-  return response.json();
+  try {
+    const response = await fetch(`${API_BASE_URL}/wallets/${address}`, {
+      headers: apiService.getAuthHeaders(),
+    });
+    
+    const data = await response.json();
+    
+    // Transform the backend response to match frontend expectations
+    return {
+      address: data.address,
+      chain: data.chain,
+      balance: parseFloat(data.balance) || 0, // Convert string to number
+      riskScore: data.riskScore || 0,
+      lastActivity: data.lastActivity,
+      labels: data.labels || [],
+      isBlacklisted: data.isBlacklisted || false,
+      entityType: data.entityType || 'individual',
+    };
+  } catch (error) {
+    console.error('Error searching wallet:', error);
+    throw error;
+  }
 };
 
 export const getWalletTransactions = async (address: string) => {
-  const response = await fetch(
-    `${API_BASE_URL}/wallets/${address}/transactions`,
-    {
-      headers: apiService.getAuthHeaders(),
-    },
-  );
-  return response.json();
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/wallets/${address}/transactions`,
+      {
+        headers: apiService.getAuthHeaders(),
+      },
+    );
+    
+    const data = await response.json();
+    
+    // Transform the backend response to match frontend expectations
+    if (data.success && data.data) {
+      // Combine regular transactions and token transfers
+      const allTransactions = [];
+      
+      // Add regular transactions
+      if (data.data.transactions) {
+        allTransactions.push(...data.data.transactions.map((tx: any) => ({
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          amount: parseFloat(tx.valueFormatted) || 0,
+          currency: 'ETH',
+          timestamp: new Date(tx.timestamp * 1000).toISOString(),
+          chain: tx.chain || 'ethereum',
+          blockNumber: tx.blockNumber,
+          gasUsed: tx.gasUsed,
+          riskFlags: [],
+          category: 'normal' as any,
+        })));
+      }
+      
+      // Add token transfers
+      if (data.data.tokenTransfers) {
+        allTransactions.push(...data.data.tokenTransfers.map((tx: any) => ({
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          amount: parseFloat(tx.valueFormatted) || 0,
+          currency: tx.tokenSymbol || 'TOKEN',
+          timestamp: new Date(tx.timestamp * 1000).toISOString(),
+          chain: tx.chain || 'ethereum',
+          blockNumber: tx.blockNumber,
+          gasUsed: 0,
+          riskFlags: [],
+          category: 'normal' as any,
+          isTokenTransfer: true,
+          tokenName: tx.tokenName,
+          contractAddress: tx.contractAddress,
+        })));
+      }
+      
+      // Sort by timestamp (newest first)
+      allTransactions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      return allTransactions;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error fetching wallet transactions:', error);
+    return [];
+  }
 };
 
 export const performSanctionScreening = async (address: string) => {

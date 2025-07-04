@@ -146,8 +146,23 @@ const getWalletRiskProfile = async (req, res) => {
   }
 };
 
+const getWalletAnalysis = (req, res) => res.json({ message: "getWalletAnalysis placeholder" });
+const getWalletTokenHoldings = (req, res) => res.json({ message: "getWalletTokenHoldings placeholder" });
+const getWalletInternalTransactions = (req, res) => res.json({ message: "getWalletInternalTransactions placeholder" });
+const getContractABI = (req, res) => res.json({ message: "getContractABI placeholder" });
+const getApiStatus = (req, res) => res.json({ status: "ok" });
+const searchWallets = (req, res) => res.json([]);
+const getWalletRiskAssessment = (req, res) => res.json({ message: "getWalletRiskAssessment placeholder" });
+
 module.exports = {
   searchWallet,
   getWalletTransactions,
   getWalletRiskProfile,
+  getWalletAnalysis,
+  getWalletTokenHoldings,
+  getWalletInternalTransactions,
+  getContractABI,
+  getApiStatus,
+  searchWallets,
+  getWalletRiskAssessment,
 }; 

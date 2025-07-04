@@ -20,6 +20,8 @@ import TravelRule from "./pages/TravelRule";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
+import BridgeMonitoring from "./pages/BridgeMonitoring";
+import TestPage from "./pages/TestPage";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -192,6 +194,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <UserManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bridge-monitoring"
+        element={
+          <ProtectedRoute>
+            <BridgeMonitoring />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/test"
+        element={
+          <ProtectedRoute>
+            <TestPage />
           </ProtectedRoute>
         }
       />

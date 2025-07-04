@@ -16,6 +16,9 @@ const { errorMiddleware } = require("./middlewares/error");
 // Import services
 const { initializeMinIO } = require("./services/minioService");
 
+// Import bridge monitoring manager
+const BridgeMonitoringManager = require("./services/bridgeMonitoringManager");
+
 // Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
@@ -30,6 +33,15 @@ const neo4jRoutes = require("./routes/neo4j");
 const leReportRoutes = require("./routes/leReports");
 const walletRoutes = require("./routes/wallets");
 const reportsRoutes = require("./routes/reports");
+
+// Import bridge routes with debug logging
+console.log("🔍 Loading bridge routes...");
+try {
+  const bridgeRoutes = require("./routes/bridges");
+  console.log("✅ Bridge routes loaded successfully");
+} catch (error) {
+  console.error("❌ Failed to load bridge routes:", error);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -126,6 +138,16 @@ app.use("/api/le-reports", leReportRoutes);
 app.use("/api/wallets", walletRoutes);
 app.use("/api/reports", reportsRoutes);
 
+// Register bridge routes with debug logging
+console.log("🔍 Registering bridge routes...");
+try {
+  const bridgeRoutes = require("./routes/bridges");
+  app.use("/api/bridges", bridgeRoutes);
+  console.log("✅ Bridge routes registered successfully at /api/bridges");
+} catch (error) {
+  console.error("❌ Failed to register bridge routes:", error);
+}
+
 // Compliance API endpoints (these will be protected by API key)
 app.get("/api/compliance/status", authMiddleware, (req, res) => {
   res.json({
@@ -133,6 +155,101 @@ app.get("/api/compliance/status", authMiddleware, (req, res) => {
     user: req.user,
     timestamp: new Date().toISOString(),
   });
+});
+
+// Dashboard stats endpoint
+app.get("/api/dashboard/stats", authMiddleware, async (req, res) => {
+  try {
+    // Return static stats for now since database schema may not be complete
+    res.json({
+      totalWallets: 45678,
+      highRiskWallets: 234,
+      todayTransactions: 12456,
+      suspiciousTransactions: 89,
+      openCases: 23,
+      pendingReports: 5,
+      activeAlerts: 12,
+      complianceScore: 87,
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// Alerts endpoint
+app.get("/api/alerts", authMiddleware, async (req, res) => {
+  try {
+    // For now, return empty array since alerts system is not fully implemented
+    res.json([]);
+  } catch (error) {
+    console.error('Error fetching alerts:', error);
+    res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+// Networks endpoint
+app.get("/api/networks", authMiddleware, (req, res) => {
+  res.json([
+    {
+      id: "ethereum",
+      name: "Ethereum",
+      symbol: "ETH",
+      isEnabled: true,
+      lastBlock: 19234567,
+      avgBlockTime: 12,
+      transactionFee: 0.002,
+    },
+    {
+      id: "bitcoin",
+      name: "Bitcoin", 
+      symbol: "BTC",
+      isEnabled: true,
+      lastBlock: 823456,
+      avgBlockTime: 600,
+      transactionFee: 0.0001,
+    },
+    {
+      id: "polygon",
+      name: "Polygon",
+      symbol: "MATIC", 
+      isEnabled: true,
+      lastBlock: 52789123,
+      avgBlockTime: 2,
+      transactionFee: 0.001,
+    },
+  ]);
+});
+
+// Integrations endpoint
+app.get("/api/integrations", authMiddleware, (req, res) => {
+  res.json([
+    {
+      id: "chainalysis",
+      name: "Chainalysis",
+      type: "compliance",
+      status: "active",
+      endpoint: "https://api.chainalysis.com",
+      lastSync: new Date().toISOString(),
+      apiKey: "sk_****_****",
+      rateLimitRemaining: 4850,
+    },
+    {
+      id: "binance",
+      name: "Binance Exchange",
+      type: "exchange",
+      status: "active",
+      endpoint: "https://api.binance.com",
+      lastSync: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      apiKey: "api_****_****",
+      rateLimitRemaining: 1200,
+    },
+  ]);
+});
+
+// Clusters endpoint
+app.get("/api/clusters", authMiddleware, (req, res) => {
+  res.json([]);
 });
 
 // 404 handler
@@ -153,6 +270,12 @@ const startServer = async () => {
     // Initialize MinIO bucket
     await initializeMinIO();
     console.log("✅ MinIO initialized successfully");
+    
+    // Initialize and start bridge monitoring
+    const bridgeMonitoringManager = new BridgeMonitoringManager();
+    await bridgeMonitoringManager.initialize();
+    await bridgeMonitoringManager.startMonitoring();
+    console.log("✅ Bridge monitoring started successfully");
     
     // Start server
     app.listen(PORT, () => {

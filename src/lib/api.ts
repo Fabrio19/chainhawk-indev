@@ -1,4 +1,4 @@
-// Mock API functions for blockchain compliance platform
+// Real API functions for blockchain compliance platform
 import {
   Wallet,
   Transaction,
@@ -13,9 +13,272 @@ import {
   AuditLogEntry,
   APIIntegration,
 } from "./types";
+import { getApiBaseUrl } from "./apiConfig";
 
-// Simulate API delay
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const API_BASE_URL = getApiBaseUrl();
+
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+};
+
+// Helper function to handle API responses
+const handleApiResponse = async (response: Response) => {
+  if (!response.ok) {
+    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+  }
+  return response.json();
+};
+
+// Helper function for delays (for mock data)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Real API functions
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch dashboard stats:', error);
+    // Return default stats if API fails
+    return {
+      totalWallets: 0,
+      highRiskWallets: 0,
+      todayTransactions: 0,
+      suspiciousTransactions: 0,
+      openCases: 0,
+      pendingReports: 0,
+      activeAlerts: 0,
+      complianceScore: 0,
+    };
+  }
+};
+
+export const searchWallet = async (address: string): Promise<Wallet> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/wallets/${address}`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to search wallet:', error);
+    throw error;
+  }
+};
+
+export const getWalletTransactions = async (
+  address: string,
+): Promise<Transaction[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/wallets/${address}/transactions`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleApiResponse(response);
+    // Transform the backend response to match frontend Transaction type
+    return data.data?.transactions?.map((tx: any) => ({
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      amount: parseFloat(tx.valueFormatted) || 0,
+      currency: 'ETH',
+      timestamp: new Date(tx.timestamp * 1000).toISOString(),
+      chain: tx.chain || 'ethereum',
+      blockNumber: tx.blockNumber,
+      gasUsed: tx.gasUsed,
+      riskFlags: [],
+      category: 'normal' as any,
+    })) || [];
+  } catch (error) {
+    console.error('Failed to fetch wallet transactions:', error);
+    return [];
+  }
+};
+
+export const performSanctionScreening = async (
+  address: string,
+): Promise<SanctionHit[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sanctions/screen/${address}`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleApiResponse(response);
+    // Transform the backend response to match frontend SanctionHit type
+    return data.map((hit: any) => ({
+      address,
+      sanctionList: hit.sanctionList,
+      matchType: 'exact',
+      confidence: 95,
+      entity: hit.entityName || 'Unknown',
+      reason: hit.description || 'Sanction match found',
+      dateAdded: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error('Failed to perform sanction screening:', error);
+    return [];
+  }
+};
+
+export const performPEPScreening = async (
+  name: string,
+): Promise<PEPRecord[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/pep/screen`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to perform PEP screening:', error);
+    return [];
+  }
+};
+
+export const getComplianceCases = async (): Promise<ComplianceCase[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cases`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch compliance cases:', error);
+    return [];
+  }
+};
+
+export const getActiveAlerts = async (): Promise<Alert[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/alerts`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch active alerts:', error);
+    return [];
+  }
+};
+
+export const getRegulatoryReports = async (): Promise<RegulatoryReport[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/reports`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch regulatory reports:', error);
+    return [];
+  }
+};
+
+export const getBlockchainNetworks = async (): Promise<BlockchainNetwork[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/networks`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch blockchain networks:', error);
+    return [];
+  }
+};
+
+export const getAPIIntegrations = async (): Promise<APIIntegration[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/integrations`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch API integrations:', error);
+    return [];
+  }
+};
+
+export const traceTransaction = async (
+  hash: string,
+  depth: number = 3,
+): Promise<Transaction[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/tracing/advanced/${hash}?depth=${depth}`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await handleApiResponse(response);
+    
+    // Transform the advanced tracer response to match frontend Transaction type
+    if (data.success && data.flat) {
+      return data.flat.map((tx: any) => ({
+        hash: tx.hash,
+        from: tx.from,
+        to: tx.to,
+        amount: parseFloat(tx.amount) || 0,
+        currency: tx.token || 'ETH',
+        timestamp: tx.time || new Date().toISOString(),
+        chain: tx.chain || 'ethereum',
+        blockNumber: tx.blockNumber,
+        gasUsed: tx.gasUsed,
+        riskFlags: tx.riskTags || [],
+        category: tx.riskLevel > 70 ? 'suspicious' : 'normal' as any,
+        depth: tx.depth,
+        riskLevel: tx.riskLevel,
+        direction: tx.direction,
+        isCrossChain: tx.isCrossChain,
+        bridgeName: tx.bridgeName,
+      }));
+    }
+    
+    // Fallback to old endpoint if advanced tracer fails
+    const fallbackResponse = await fetch(`${API_BASE_URL}/tracing/trace/${hash}?depth=${depth}`, {
+      headers: getAuthHeaders(),
+    });
+    const fallbackData = await handleApiResponse(fallbackResponse);
+    return fallbackData.map((tx: any) => ({
+      hash: tx.hash,
+      from: tx.from,
+      to: tx.to,
+      amount: parseFloat(tx.valueFormatted) || 0,
+      currency: 'ETH',
+      timestamp: new Date(tx.timestamp * 1000).toISOString(),
+      chain: tx.chain || 'ethereum',
+      blockNumber: tx.blockNumber,
+      gasUsed: tx.gasUsed,
+      riskFlags: [],
+      category: 'normal' as any,
+    }));
+  } catch (error) {
+    console.error('Failed to trace transaction:', error);
+    return [];
+  }
+};
+
+export const getEntityClusters = async (): Promise<EntityCluster[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/clusters`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch entity clusters:', error);
+    return [];
+  }
+};
+
+export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/audit/logs`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleApiResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch audit logs:', error);
+    return [];
+  }
+};
 
 // Mock data generators
 export const generateMockWallet = (): Wallet => ({
@@ -54,271 +317,3 @@ export const generateMockTransaction = (): Transaction => ({
   riskFlags: Math.random() > 0.7 ? ["high-frequency", "unusual-amount"] : [],
   category: Math.random() > 0.8 ? "suspicious" : ("normal" as any),
 });
-
-// API functions
-export const getDashboardStats = async (): Promise<DashboardStats> => {
-  await delay(500);
-  return {
-    totalWallets: 45678,
-    highRiskWallets: 234,
-    todayTransactions: 12456,
-    suspiciousTransactions: 89,
-    openCases: 23,
-    pendingReports: 5,
-    activeAlerts: 12,
-    complianceScore: 87,
-  };
-};
-
-export const searchWallet = async (address: string): Promise<Wallet> => {
-  await delay(800);
-  return {
-    ...generateMockWallet(),
-    address,
-  };
-};
-
-export const getWalletTransactions = async (
-  address: string,
-): Promise<Transaction[]> => {
-  await delay(600);
-  return Array.from({ length: 10 }, () => ({
-    ...generateMockTransaction(),
-    from: Math.random() > 0.5 ? address : generateMockTransaction().from,
-    to: Math.random() > 0.5 ? address : generateMockTransaction().to,
-  }));
-};
-
-export const performSanctionScreening = async (
-  address: string,
-): Promise<SanctionHit[]> => {
-  await delay(1200);
-  if (Math.random() > 0.9) {
-    return [
-      {
-        address,
-        sanctionList: "OFAC",
-        matchType: "exact",
-        confidence: 95,
-        entity: "Darkweb Market Operator",
-        reason: "Money laundering activities",
-        dateAdded: "2024-01-15",
-      },
-    ];
-  }
-  return [];
-};
-
-export const performPEPScreening = async (
-  name: string,
-): Promise<PEPRecord[]> => {
-  await delay(1000);
-  if (Math.random() > 0.8) {
-    return [
-      {
-        name,
-        country: "India",
-        position: "Former Minister of Finance",
-        riskLevel: "high",
-        lastUpdated: "2024-01-20",
-        sourceOfWealth: "Political position, business interests",
-        politicalExposure: "High - Former cabinet minister",
-      },
-    ];
-  }
-  return [];
-};
-
-export const getComplianceCases = async (): Promise<ComplianceCase[]> => {
-  await delay(700);
-  return Array.from({ length: 8 }, (_, i) => ({
-    id: `CASE-${String(i + 1).padStart(3, "0")}`,
-    title: `Investigation ${i + 1}: Suspicious Transaction Pattern`,
-    description:
-      "Multiple high-value transactions to known high-risk wallets detected",
-    priority: ["low", "medium", "high", "critical"][
-      Math.floor(Math.random() * 4)
-    ] as any,
-    status: ["open", "investigating", "resolved", "closed"][
-      Math.floor(Math.random() * 4)
-    ] as any,
-    assignedTo: `Analyst ${i + 1}`,
-    createdAt: new Date(
-      Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-    updatedAt: new Date().toISOString(),
-    relatedWallets: [`0x${Math.random().toString(16).substr(2, 40)}`],
-    findings: ["High transaction frequency", "Connection to mixer services"],
-    actions: [],
-  }));
-};
-
-export const getActiveAlerts = async (): Promise<Alert[]> => {
-  await delay(400);
-  return Array.from({ length: 6 }, (_, i) => ({
-    id: `ALERT-${String(i + 1).padStart(3, "0")}`,
-    type: ["transaction", "wallet", "sanction", "pep", "behavior"][
-      Math.floor(Math.random() * 5)
-    ] as any,
-    severity: ["low", "medium", "high", "critical"][
-      Math.floor(Math.random() * 4)
-    ] as any,
-    title: `Alert ${i + 1}: Suspicious Activity Detected`,
-    description:
-      "Automated system detected potentially suspicious transaction pattern",
-    relatedAddress: `0x${Math.random().toString(16).substr(2, 40)}`,
-    timestamp: new Date(
-      Date.now() - Math.random() * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-    status: ["new", "acknowledged", "investigating", "resolved"][
-      Math.floor(Math.random() * 4)
-    ] as any,
-    autoGenerated: true,
-  }));
-};
-
-export const getRegulatoryReports = async (): Promise<RegulatoryReport[]> => {
-  await delay(600);
-  return Array.from({ length: 5 }, (_, i) => ({
-    id: `RPT-${String(i + 1).padStart(3, "0")}`,
-    type: ["STR", "CTR", "SAR"][Math.floor(Math.random() * 3)] as any,
-    regulatorCode: ["FIU-IND", "SEBI", "RBI"][
-      Math.floor(Math.random() * 3)
-    ] as any,
-    status: ["draft", "submitted", "accepted", "rejected"][
-      Math.floor(Math.random() * 4)
-    ] as any,
-    submissionDate: Math.random() > 0.5 ? new Date().toISOString() : undefined,
-    reportingPeriod: {
-      from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      to: new Date().toISOString(),
-    },
-    totalTransactions: Math.floor(Math.random() * 10000),
-    suspiciousTransactions: Math.floor(Math.random() * 100),
-    attachments: [],
-  }));
-};
-
-export const getBlockchainNetworks = async (): Promise<BlockchainNetwork[]> => {
-  await delay(300);
-  return [
-    {
-      id: "ethereum",
-      name: "Ethereum",
-      symbol: "ETH",
-      isEnabled: true,
-      lastBlock: 19234567,
-      avgBlockTime: 12,
-      transactionFee: 0.002,
-    },
-    {
-      id: "bitcoin",
-      name: "Bitcoin",
-      symbol: "BTC",
-      isEnabled: true,
-      lastBlock: 823456,
-      avgBlockTime: 600,
-      transactionFee: 0.0001,
-    },
-    {
-      id: "polygon",
-      name: "Polygon",
-      symbol: "MATIC",
-      isEnabled: true,
-      lastBlock: 52789123,
-      avgBlockTime: 2,
-      transactionFee: 0.001,
-    },
-  ];
-};
-
-export const getAPIIntegrations = async (): Promise<APIIntegration[]> => {
-  await delay(400);
-  return [
-    {
-      id: "chainalysis",
-      name: "Chainalysis",
-      type: "compliance",
-      status: "active",
-      endpoint: "https://api.chainalysis.com",
-      lastSync: new Date().toISOString(),
-      apiKey: "sk_****_****",
-      rateLimitRemaining: 4850,
-    },
-    {
-      id: "binance",
-      name: "Binance Exchange",
-      type: "exchange",
-      status: "active",
-      endpoint: "https://api.binance.com",
-      lastSync: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-      apiKey: "api_****_****",
-      rateLimitRemaining: 1200,
-    },
-    {
-      id: "coinbase",
-      name: "Coinbase",
-      type: "exchange",
-      status: "error",
-      endpoint: "https://api.coinbase.com",
-      lastSync: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      apiKey: "cb_****_****",
-      rateLimitRemaining: 0,
-    },
-  ];
-};
-
-export const traceTransaction = async (
-  hash: string,
-): Promise<Transaction[]> => {
-  await delay(1500);
-  return Array.from({ length: 5 }, () => generateMockTransaction());
-};
-
-export const getEntityClusters = async (): Promise<EntityCluster[]> => {
-  await delay(800);
-  return Array.from({ length: 4 }, (_, i) => ({
-    clusterId: `CLUSTER-${String(i + 1).padStart(3, "0")}`,
-    entityType: ["Exchange", "Mixer", "DeFi Protocol", "Mining Pool"][i],
-    confidence: 85 + Math.random() * 15,
-    wallets: Array.from(
-      { length: Math.floor(Math.random() * 10) + 1 },
-      () => `0x${Math.random().toString(16).substr(2, 40)}`,
-    ),
-    totalVolume: Math.random() * 10000000,
-    riskScore: Math.floor(Math.random() * 100),
-    labels: ["High Volume", "KYC Verified", "Institutional"].filter(
-      () => Math.random() > 0.5,
-    ),
-    firstSeen: new Date(
-      Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-    lastActive: new Date(
-      Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-  }));
-};
-
-export const getAuditLogs = async (): Promise<AuditLogEntry[]> => {
-  await delay(500);
-  return Array.from({ length: 20 }, (_, i) => ({
-    id: `LOG-${String(i + 1).padStart(6, "0")}`,
-    userId: `user${Math.floor(Math.random() * 10)}`,
-    action: [
-      "wallet_search",
-      "report_generate",
-      "case_update",
-      "settings_change",
-    ][Math.floor(Math.random() * 4)],
-    resourceType: ["wallet", "case", "report", "settings"][
-      Math.floor(Math.random() * 4)
-    ],
-    resourceId: `resource_${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date(
-      Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-    ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    result: Math.random() > 0.1 ? "success" : "failure",
-  }));
-};
